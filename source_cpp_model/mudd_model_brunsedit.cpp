@@ -95,7 +95,7 @@ vector<double> biomass_and_mortality2(double day, double peak_biomass, double mi
 double column_model(double RSLR, double kfactor, double bfactor, double tA, double conc_silt, double conc_fs,
 				  double labile_frac, double refrac_frac,
 				  double theta_root_efold, double effective_svel, double starting_depth_frac,
-				  ofstream& data_out, ofstream& col_out);
+				  ofstream& data_out, ofstream& col_out,double theta_bm_arg);
 
 // a utility function used to convert integers to strings
 string itoa(int num);
@@ -176,6 +176,8 @@ int main()
 	//while (SLR_increase >= .0001)	 //MK- I commented this out
 	for (int i = 0; i<=3; i++)
 	{
+
+		double theta_bm_arg =0;
 		kfactor=kfactor_array[i];	// MK- Next 3 lines are to cycle through multiple parameters
 		bfactor=bfactor_array[i];
 		cout<< " Run #: " << i+1 << " kfactor= " << kfactor << " bfactor= " << bfactor << endl;
@@ -204,7 +206,8 @@ int main()
 		peak_Bmass = column_model(SLR,kfactor, bfactor, tA,conc_silt,conc_fs,
 				   labile_frac, refrac_frac,
 				   root_efold, effective_svel, start_depth_frac,
-				   data_out, col_out);
+				   data_out, col_out,
+				   theta_bm_arg);
 		time (&end);					// get ending time
 		dif = difftime (end,start);
 		cout << "\nruntime was: " << dif << " seconds\n";
@@ -236,7 +239,9 @@ int main()
 double column_model(double RSLR, double kfactor, double bfactor, double tA, double conc_silt, double conc_fs,
 				  double labile_frac, double refrac_frac,
 				  double theta_root_efold, double effective_svel, double start_depth_frac,
-				  ofstream& data_out, ofstream& col_out)
+				  ofstream& data_out, ofstream& col_out,
+				  double theta_bm_arg //NEB addition
+				  )
 {
 
 	/// MK- I added this section to load temperature data from a file///////////////
@@ -465,6 +470,9 @@ double column_model(double RSLR, double kfactor, double bfactor, double tA, doub
 			>> temp_string >> root_type									//
 			>> temp_string >> n_carbon_types							//
 			>> temp_string;												//
+
+	theta_bm = theta_bm_arg; // NEB addition-- this overwrites param file so
+			//now, this value is handspecified in main() function
 	for (int i = 0; i< n_carbon_types; i++)								//
 	{																	//
 		paramfile >> temp_int;											//
@@ -922,7 +930,7 @@ double column_model(double RSLR, double kfactor, double bfactor, double tA, doub
    	// MK- New function to save time series data
 	ofstream series_out;
 	//all below is NEB hack for clean runs
-	string run_name ="test_run_dir"; // This should be a parm passed in
+	string run_name ="test_run_dir"; // This probably aught to a parm passed in at runtime
 	string output_dir="model_output/" + run_name + "/";
 	string fname2_prefix= output_dir + "series."; //NEB hack 
 	// string fname2_prefix="series."; //NEB hack 
@@ -934,7 +942,12 @@ double column_model(double RSLR, double kfactor, double bfactor, double tA, doub
 		{fname2_k=itoa(1);}
 		if (bfactor!=0)
 		{fname2_b=itoa(1);}
-	string fname2=fname2_prefix+fname2_k+fname2_b+fname2_suffix;
+
+	string fname2_theta_bm="theta_bm_" + itoa(theta_bm_arg);
+	string fname2_silt_conc="sed_" + itoa(conc_silt);
+	string fname2=fname2_prefix+
+		fname2_theta_bm+"_"+fname2_k+fname2_b+"_"+fname2_silt_conc+
+		fname2_suffix;
 	series_out.open(fname2.c_str());
 	//series_out.open("series.txt", ios::out); // This simpler version didn't allow multiple output files for multiple parameters
 	for (int q=0; q<TimeSeries_Yr.size(); q++)
