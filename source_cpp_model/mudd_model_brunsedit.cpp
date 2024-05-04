@@ -177,7 +177,8 @@ int main()
 	for (int i = 0; i<=3; i++)
 	{
 
-		double theta_bm_arg =0;
+		// double theta_bm_arg =0;
+		double theta_bm_arg =-6.8;
 		kfactor=kfactor_array[i];	// MK- Next 3 lines are to cycle through multiple parameters
 		bfactor=bfactor_array[i];
 		cout<< " Run #: " << i+1 << " kfactor= " << kfactor << " bfactor= " << bfactor << endl;
@@ -948,7 +949,7 @@ double column_model(double RSLR, double kfactor, double bfactor, double tA, doub
 	ostringstream stream;
 	stream << fixed << setprecision(3) << conc_silt;  // Set precision as needed
 	string fname2_silt_conc = "sed_" + stream.str();
-	
+
 	// end new code for flou
 	string fname2=fname2_prefix+
 		fname2_theta_bm+"_"+fname2_k+fname2_b+"_"+fname2_silt_conc+
