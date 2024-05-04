@@ -944,7 +944,12 @@ double column_model(double RSLR, double kfactor, double bfactor, double tA, doub
 		{fname2_b=itoa(1);}
 
 	string fname2_theta_bm="theta_bm_" + itoa(theta_bm_arg);
-	string fname2_silt_conc="sed_" + itoa(conc_silt);
+	// string fname2_silt_conc="sed_" + itoa(conc_silt);
+	ostringstream stream;
+	stream << fixed << setprecision(3) << conc_silt;  // Set precision as needed
+	string fname2_silt_conc = "sed_" + stream.str();
+	
+	// end new code for flou
 	string fname2=fname2_prefix+
 		fname2_theta_bm+"_"+fname2_k+fname2_b+"_"+fname2_silt_conc+
 		fname2_suffix;
