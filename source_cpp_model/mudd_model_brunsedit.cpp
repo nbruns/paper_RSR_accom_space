@@ -153,16 +153,12 @@ int main()
 	start_depth_frac = double(i_start_frac)*0.1;
 	tA = 0.5;
 	//tA = 0.1*double(i_tA)+0.4;		// this is the tidal amplitude
-	tot_conc = .001;		// i_ssc is 2, so ssc = 0.01, or 10mg/L
 
 	// these are the parameters for north inlet
 	root_efold = 0.11;
 	// effective_svel = 0.000037;			// UPDATE 9-sept-2011: tke model calcualtes effective settling directly
 	labile_frac = 0.842;
 	silt_frac = 1.0;
-	conc_silt = tot_conc*silt_frac;
-	conc_fs = 0;
-	refrac_frac = 1-labile_frac;
 
 
 	// shooting loop
@@ -174,6 +170,8 @@ int main()
 	double old_SLR=0;
 	double SLR_increase = 0.0001;
 
+	double sed_conc_array[3] ={.001,.005,.05}; // for S2: 1, 5, and 50 mg/L
+	// tot_conc = .001;		// i_ssc is 2, so ssc = 0.01, or 10mg/L
 	//while (SLR_increase >= .0001)	 //MK- I commented this out
 	for (int i = 0; i<=3; i++)
 	{
@@ -181,9 +179,16 @@ int main()
 		// double theta_bm_arg =0;
 		double theta_bm_arg =-6.8;
 		double D_mbm_arg=4.8; //NEB addition
-		kfactor=kfactor_array[i];	// MK- Next 3 lines are to cycle through multiple parameters
-		bfactor=bfactor_array[i];
-		cout<< " Run #: " << i+1 << " kfactor= " << kfactor << " bfactor= " << bfactor << endl;
+		tot_conc=sed_conc_array[i];
+		//below lines 3 are fixed transformations of overall silt concentration
+			conc_silt = tot_conc*silt_frac;
+			conc_fs = 0;
+			refrac_frac = 1-labile_frac;
+
+		// kfactor=kfactor_array[i];	// MK- Next 3 lines are to cycle through multiple parameters
+		// bfactor=bfactor_array[i];
+		cout<< " Run #: " << i+1 << " sed conc: " << tot_conc <<
+			" kfactor= " << kfactor << " bfactor= " << bfactor << endl;
 
 		//SLR = double(i)*0.001;
 		SLR = old_SLR+SLR_increase;
@@ -340,7 +345,11 @@ double column_model(double RSLR, double kfactor, double bfactor, double tA, doub
 											// layer of an annual band
 	int ab_pointer_sz;
 
-	int end_year = 200;				// the final year	//MK- I changed this from 1500 to 10000
+	//int end_year = 300;				// the final year	
+	int end_year = 200;				// the final year	
+							// if you change this, check line 631
+							//int runup=end_year-100;
+						//MK- I changed this from 1500 to 10000
 
 	int fixed_top;
 	int fixed_bot;
@@ -528,7 +537,7 @@ double column_model(double RSLR, double kfactor, double bfactor, double tA, doub
 	// set the particle settling velocity
 	particle_settling_velocities[0] = effective_svel;
 
-	cout << "You chave chose particles with diameter: " << particle_diameters[0]
+	cout << "You chave chosen particles with diameter: " << particle_diameters[0]
 	     << " their settling velocity is: " << effective_svel << endl;
 
 
@@ -623,7 +632,8 @@ double column_model(double RSLR, double kfactor, double bfactor, double tA, doub
 	int dead_biomass_counter = 0;
 	int low_acc_ratio_counter = 0;
 	int yr = 0;
-	int runup=end_year-100;
+	// int runup=end_year-200; //NEB-- must change this if you want a longer run
+	int runup=end_year-100; //NEB-- must change this if you want a longer run
 	//while(yr < end_year && dead_biomass_counter < 10 && (accretion_ratio < .99 || accretion_ratio > 1.01 ))
 	//while (yr<end_year && dead_biomass_counter<10)	//MK- I commented out these two lines?
 	while (yr<end_year)
