@@ -95,7 +95,8 @@ vector<double> biomass_and_mortality2(double day, double peak_biomass, double mi
 double column_model(double RSLR, double kfactor, double bfactor, double tA, double conc_silt, double conc_fs,
 				  double labile_frac, double refrac_frac,
 				  double theta_root_efold, double effective_svel, double starting_depth_frac,
-				  ofstream& data_out, ofstream& col_out,double theta_bm_arg);
+				  ofstream& data_out, ofstream& col_out,
+				  double theta_bm_arg, double D_mbm_arg);
 
 // a utility function used to convert integers to strings
 string itoa(int num);
@@ -179,6 +180,7 @@ int main()
 
 		// double theta_bm_arg =0;
 		double theta_bm_arg =-6.8;
+		double D_mbm_arg=4.8; //NEB addition
 		kfactor=kfactor_array[i];	// MK- Next 3 lines are to cycle through multiple parameters
 		bfactor=bfactor_array[i];
 		cout<< " Run #: " << i+1 << " kfactor= " << kfactor << " bfactor= " << bfactor << endl;
@@ -208,7 +210,8 @@ int main()
 				   labile_frac, refrac_frac,
 				   root_efold, effective_svel, start_depth_frac,
 				   data_out, col_out,
-				   theta_bm_arg);
+				   theta_bm_arg,
+				   D_mbm_arg);
 		time (&end);					// get ending time
 		dif = difftime (end,start);
 		cout << "\nruntime was: " << dif << " seconds\n";
@@ -241,7 +244,8 @@ double column_model(double RSLR, double kfactor, double bfactor, double tA, doub
 				  double labile_frac, double refrac_frac,
 				  double theta_root_efold, double effective_svel, double start_depth_frac,
 				  ofstream& data_out, ofstream& col_out,
-				  double theta_bm_arg //NEB addition
+				  double theta_bm_arg, //NEB addition
+				  double D_mbm_arg //NEB addition
 				  )
 {
 
@@ -471,9 +475,11 @@ double column_model(double RSLR, double kfactor, double bfactor, double tA, doub
 			>> temp_string >> root_type									//
 			>> temp_string >> n_carbon_types							//
 			>> temp_string;												//
-
+	//NEB-- this is where I overwrite the paramters from param file
+		// with values of paramter sweep-- RSR ratio and sed load
 	theta_bm = theta_bm_arg; // NEB addition-- this overwrites param file so
 			//now, this value is handspecified in main() function
+	D_mbm = D_mbm_arg;
 	for (int i = 0; i< n_carbon_types; i++)								//
 	{																	//
 		paramfile >> temp_int;											//
@@ -931,7 +937,7 @@ double column_model(double RSLR, double kfactor, double bfactor, double tA, doub
    	// MK- New function to save time series data
 	ofstream series_out;
 	//all below is NEB hack for clean runs
-	string run_name ="test_run_dir"; // This probably aught to a parm passed in at runtime
+	string run_name ="test_run_dir"; // This probably aught to be a parm passed in at runtime
 	string output_dir="model_output/" + run_name + "/";
 	string fname2_prefix= output_dir + "series."; //NEB hack 
 	// string fname2_prefix="series."; //NEB hack 
@@ -946,13 +952,23 @@ double column_model(double RSLR, double kfactor, double bfactor, double tA, doub
 
 	string fname2_theta_bm="theta_bm_" + itoa(theta_bm_arg);
 	// string fname2_silt_conc="sed_" + itoa(conc_silt);
-	ostringstream stream;
-	stream << fixed << setprecision(3) << conc_silt;  // Set precision as needed
-	string fname2_silt_conc = "sed_" + stream.str();
 
-	// end new code for flou
+	// For conc_silt
+	ostringstream stream_sed;
+	stream_sed << fixed << setprecision(3) << conc_silt;  // Set precision as needed
+	string fname2_silt_conc = "sed_" + stream_sed.str();
+
+
+	// For D_mbm
+	ostringstream stream_D_mbm;
+	stream_D_mbm << fixed << setprecision(3) << D_mbm;  // Set precision as needed
+	string fname2_D_mbm = "D_mbm_" + stream_D_mbm.str();
+
+
+	// end new code for floating point string casting
 	string fname2=fname2_prefix+
-		fname2_theta_bm+"_"+fname2_k+fname2_b+"_"+fname2_silt_conc+
+		fname2_theta_bm+"_"+"Mattcasestring_"+fname2_k+fname2_b+
+		"_"+fname2_D_mbm+"_"+fname2_silt_conc+
 		fname2_suffix;
 	series_out.open(fname2.c_str());
 	//series_out.open("series.txt", ios::out); // This simpler version didn't allow multiple output files for multiple parameters
