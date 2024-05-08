@@ -168,18 +168,20 @@ int main()
 	// so the model increases the SLR by half the value it increased
 	// previously and runs again#
 	double old_SLR=0;
-	double SLR_increase = 0.0001;
+	double SLR_increase = 0.0005;
 
 	double sed_conc_array[3] ={.001,.005,.05}; // for S2: 1, 5, and 50 mg/L
 	// tot_conc = .001;		// i_ssc is 2, so ssc = 0.01, or 10mg/L
-	//while (SLR_increase >= .0001)	 //MK- I commented this out
-	for (int i = 0; i<=3; i++)
+	while (SLR_increase >= .0001)	 //MK- I commented this out
+	// for (int i = 0; i<=3; i++)
 	{
 
 		// double theta_bm_arg =0;
 		double theta_bm_arg =-6.8;
 		double D_mbm_arg=4.8; //NEB addition
-		tot_conc=sed_conc_array[i];
+		// tot_conc=sed_conc_array[i];
+		tot_conc=.001;
+		// tot_conc=sed_conc_array[i];
 		//below lines 3 are fixed transformations of overall silt concentration
 			conc_silt = tot_conc*silt_frac;
 			conc_fs = 0;
@@ -187,8 +189,8 @@ int main()
 
 		// kfactor=kfactor_array[i];	// MK- Next 3 lines are to cycle through multiple parameters
 		// bfactor=bfactor_array[i];
-		cout<< " Run #: " << i+1 << " sed conc: " << tot_conc <<
-			" kfactor= " << kfactor << " bfactor= " << bfactor << endl;
+		// cout<< " Run #: " << i+1 << " sed conc: " << tot_conc <<
+		// 	" kfactor= " << kfactor << " bfactor= " << bfactor << endl;
 
 		//SLR = double(i)*0.001;
 		SLR = old_SLR+SLR_increase;
@@ -642,17 +644,18 @@ double column_model(double RSLR, double kfactor, double bfactor, double tA, doub
 		t_ime = yr*365;
 		yr_time = t_ime/365;
 
-		if (yr<=runup)		
-		{SLR= .0017;}
-		else
-		{SLR=slvector[yr-runup]-slvector[yr-runup-1];} //MK- I added this line to cacluate the rate of sea level rise from the loaded file
-		//cout << " Yr: "<< yr << " Sl: " << slvector[yr] << " Sl yr-1: " << slvector[yr-1] << " SLRR: " << SLR << endl;
+	//NEB -- remove scenario code
+		// if (yr<=runup)		
+		// {SLR= .0017;}
+		// else
+		// {SLR=slvector[yr-runup]-slvector[yr-runup-1];} //MK- I added this line to cacluate the rate of sea level rise from the loaded file
 		
-		if (yr<=runup)
-		{temperatureincrease=0;}//temperaturevector[yr]-temperaturevector[0]; //MK- I added this line too
-		else
-		{temperatureincrease=temperaturevector[yr-runup]-temperaturevector[0];}		
-
+		// if (yr<=runup)
+		// {temperatureincrease=0;}//temperaturevector[yr]-temperaturevector[0]; //MK- I added this line too
+		// else
+		// {temperatureincrease=temperaturevector[yr-runup]-temperaturevector[0];}		
+	//
+		temperatureincrease=0;
 		// reset the biomass
 		Bmass = 0;
 
@@ -947,7 +950,7 @@ double column_model(double RSLR, double kfactor, double bfactor, double tA, doub
    	// MK- New function to save time series data
 	ofstream series_out;
 	//all below is NEB hack for clean runs
-	string run_name ="test_run_dir"; // This probably aught to be a parm passed in at runtime
+	string run_name = "equilibrium_runs";//"test_run_dir"; // This probably aught to be a parm passed in at runtime
 	string output_dir="model_output/" + run_name + "/";
 	string fname2_prefix= output_dir + "series."; //NEB hack 
 	// string fname2_prefix="series."; //NEB hack 
@@ -974,11 +977,16 @@ double column_model(double RSLR, double kfactor, double bfactor, double tA, doub
 	stream_D_mbm << fixed << setprecision(3) << D_mbm;  // Set precision as needed
 	string fname2_D_mbm = "D_mbm_" + stream_D_mbm.str();
 
+	// For SLR
+	ostringstream stream_SLR;
+	stream_SLR << fixed << setprecision(4) << SLR;  // Set precision as needed
+	string fname2_SLR = "SLR_" + stream_SLR.str();
+
 
 	// end new code for floating point string casting
 	string fname2=fname2_prefix+
 		fname2_theta_bm+"_"+"Mattcasestring_"+fname2_k+fname2_b+
-		"_"+fname2_D_mbm+"_"+fname2_silt_conc+
+		"_"+fname2_D_mbm+"_"+fname2_silt_conc+ "_" + fname2_SLR +
 		fname2_suffix;
 	series_out.open(fname2.c_str());
 	//series_out.open("series.txt", ios::out); // This simpler version didn't allow multiple output files for multiple parameters
