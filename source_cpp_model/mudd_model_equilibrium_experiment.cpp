@@ -167,7 +167,7 @@ int main()
 	// if the biomass is 0, then the model has overshot
 	// so the model increases the SLR by half the value it increased
 	// previously and runs again#
-	double old_SLR=0;
+	double old_SLR=0.0005;
 	double SLR_increase = 0.0005;
 
 	double sed_conc_array[3] ={.001,.005,.05}; // for S2: 1, 5, and 50 mg/L
@@ -176,9 +176,9 @@ int main()
 	// for (int i = 0; i<=3; i++)
 	{
 
-		// double theta_bm_arg =0;
-		double theta_bm_arg =-6.8;
-		double D_mbm_arg=4.8; //NEB addition
+		double theta_bm_arg =0;
+		// double theta_bm_arg =-6.8;
+		double D_mbm_arg=2.5; //NEB addition
 		// tot_conc=sed_conc_array[i];
 		tot_conc=.001;
 		// tot_conc=sed_conc_array[i];
@@ -347,8 +347,8 @@ double column_model(double RSLR, double kfactor, double bfactor, double tA, doub
 											// layer of an annual band
 	int ab_pointer_sz;
 
-	//int end_year = 300;				// the final year	
 	int end_year = 200;				// the final year	
+	// int end_year = 200;				// the final year	
 							// if you change this, check line 631
 							//int runup=end_year-100;
 						//MK- I changed this from 1500 to 10000
@@ -669,8 +669,16 @@ double column_model(double RSLR, double kfactor, double bfactor, double tA, doub
 
 		// calcualte t./column.out
 		//the peak biomass for the year
-		peak_Bmass =  get_peak_biomass(marsh_surface_elevation, MHT,
-		   max_depth, min_depth, max_bmass,temperatureincrease,yr,boriginal,bfactor);	//MK- I added temperature,yr,boriginal to this line
+
+		//REPLACE WITH PARABOLA
+		// peak_Bmass =  get_peak_biomass(marsh_surface_elevation, MHT,
+		   //max_depth, min_depth, max_bmass,temperatureincrease,yr,boriginal,bfactor);	//MK- I added temperature,yr,boriginal to this line
+
+
+		peak_Bmass =  get_peak_biomass_parab(marsh_surface_elevation, MHT,
+		   max_depth, min_depth, max_bmass);
+		
+
 
 		if (yr==1) // MK- I added these 2 lines
 		{boriginal=peak_Bmass;}
@@ -950,7 +958,7 @@ double column_model(double RSLR, double kfactor, double bfactor, double tA, doub
    	// MK- New function to save time series data
 	ofstream series_out;
 	//all below is NEB hack for clean runs
-	string run_name = "equilibrium_runs";//"test_run_dir"; // This probably aught to be a parm passed in at runtime
+	string run_name = "equilibrium_with_parabola"; //"equilibrium_runs";//"test_run_dir"; // This probably aught to be a parm passed in at runtime
 	string output_dir="model_output/" + run_name + "/";
 	string fname2_prefix= output_dir + "series."; //NEB hack 
 	// string fname2_prefix="series."; //NEB hack 
@@ -1346,6 +1354,7 @@ double get_peak_biomass_parab(double surface_elevation, double MHT,
   double depth_range = max_depth-min_depth;
   double water_depth = MHT-surface_elevation;
   double B_ps;
+  double a;
 
   //cout << "LINE 688 MHT: " << MHT << " z: " << surface_elevation
   //     << " d: " << water_depth << " max_MB: " << max_bmass << endl;
@@ -1355,7 +1364,13 @@ double get_peak_biomass_parab(double surface_elevation, double MHT,
   else if (water_depth < min_depth)
    B_ps = 0;
   else
-   B_ps = max_bmass*(water_depth-min_depth)*(max_depth-water_depth);
+
+ // Below is the inhereited parabola function, which is not quite right-- 	
+ 	//the max biomass is too low
+  // B_ps = max_bmass*(water_depth-min_depth)*(max_depth-water_depth); // 
+  //New biomass function from NEB:
+	a = -4 * max_bmass / (depth_range * depth_range);
+	B_ps = a * (water_depth - min_depth) * (water_depth - max_depth);
 
   //cout << "Line 698 min_depth: " << min_depth << " B_ps: " << B_ps << endl;
   return B_ps;
