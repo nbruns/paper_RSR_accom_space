@@ -170,15 +170,15 @@ int main()
 	double old_SLR=0;
 	double SLR_increase = 0.0001;
 
-	double sed_conc_array[3] ={.001,.005,.05}; // for S2: 1, 5, and 50 mg/L
+	double sed_conc_array[5] ={.001,.005,.01,.03,.05}; // for S2: 1, 5, and 50 mg/L
 	// tot_conc = .001;		// i_ssc is 2, so ssc = 0.01, or 10mg/L
 	//while (SLR_increase >= .0001)	 //MK- I commented this out
-	for (int i = 0; i<=3; i++)
+	for (int i = 0; i<=5; i++)
 	{
 
-		// double theta_bm_arg =0;
-		double theta_bm_arg =-6.8;
-		double D_mbm_arg=4.8; //NEB addition
+		double theta_bm_arg =0;
+		// double theta_bm_arg =-6.8;
+		double D_mbm_arg=2.5; //NEB addition
 		tot_conc=sed_conc_array[i];
 		//below lines 3 are fixed transformations of overall silt concentration
 			conc_silt = tot_conc*silt_frac;
@@ -187,6 +187,9 @@ int main()
 
 		// kfactor=kfactor_array[i];	// MK- Next 3 lines are to cycle through multiple parameters
 		// bfactor=bfactor_array[i];
+		//NEB-- turn these off for this paper
+		kfactor=0;
+		bfactor=0;
 		cout<< " Run #: " << i+1 << " sed conc: " << tot_conc <<
 			" kfactor= " << kfactor << " bfactor= " << bfactor << endl;
 
@@ -666,8 +669,14 @@ double column_model(double RSLR, double kfactor, double bfactor, double tA, doub
 
 		// calcualte t./column.out
 		//the peak biomass for the year
-		peak_Bmass =  get_peak_biomass(marsh_surface_elevation, MHT,
-		   max_depth, min_depth, max_bmass,temperatureincrease,yr,boriginal,bfactor);	//MK- I added temperature,yr,boriginal to this line
+		//replace morris biomass wedge WITH a PARAB	
+
+		//Wedge
+		// peak_Bmass =  get_peak_biomass(marsh_surface_elevation, MHT,
+		//    max_depth, min_depth, max_bmass,temperatureincrease,yr,boriginal,bfactor);	//MK- I added temperature,yr,boriginal to this line
+		//Parabola
+		 peak_Bmass =  get_peak_biomass_parab(marsh_surface_elevation, MHT,
+ 			 max_depth, min_depth, max_bmass);
 
 		if (yr==1) // MK- I added these 2 lines
 		{boriginal=peak_Bmass;}
@@ -947,7 +956,7 @@ double column_model(double RSLR, double kfactor, double bfactor, double tA, doub
    	// MK- New function to save time series data
 	ofstream series_out;
 	//all below is NEB hack for clean runs
-	string run_name ="test_run_dir"; // This probably aught to be a parm passed in at runtime
+	string run_name ="scenario_runs_fig_4"; // This probably aught to be a parm passed in at runtime
 	string output_dir="model_output/" + run_name + "/";
 	string fname2_prefix= output_dir + "series."; //NEB hack 
 	// string fname2_prefix="series."; //NEB hack 
@@ -1338,6 +1347,7 @@ double get_peak_biomass_parab(double surface_elevation, double MHT,
   double depth_range = max_depth-min_depth;
   double water_depth = MHT-surface_elevation;
   double B_ps;
+  double a;
 
   //cout << "LINE 688 MHT: " << MHT << " z: " << surface_elevation
   //     << " d: " << water_depth << " max_MB: " << max_bmass << endl;
@@ -1347,8 +1357,12 @@ double get_peak_biomass_parab(double surface_elevation, double MHT,
   else if (water_depth < min_depth)
    B_ps = 0;
   else
-   B_ps = max_bmass*(water_depth-min_depth)*(max_depth-water_depth);
-
+   // Below is the inhereited parabola function, which is not quite right--
+  	//the max biomass is too low
+   //B_ps = max_bmass*(water_depth-min_depth)*(max_depth-water_depth);
+  	// NEB-- new function so B_Max is indeed b_max
+ 	a = -4 * max_bmass / (depth_range * depth_range);
+ 	B_ps = a * (water_depth - min_depth) * (water_depth - max_depth);
   //cout << "Line 698 min_depth: " << min_depth << " B_ps: " << B_ps << endl;
   return B_ps;
  }
