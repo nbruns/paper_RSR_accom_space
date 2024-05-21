@@ -126,12 +126,17 @@ series_column_names_NO_ACRETION <-c("Yr", "MHT", "Elevation", "Biomass",
 ```
 
 ```{r fig-4-total-c-per-scenario-run-MAKE-PLOT}
+low_rsr_result_tibble
 
   cur_result_tibble %>% 
   mutate(sed_conc_mg=sed_conc*1000) %>% 
     ggplot(aes(x=rsr,y=carbon_accumulation,group=sed_conc_mg,color=as.factor(sed_conc_mg)))+
+    geom_point() +
     geom_line() +
-  scale_color_viridis_c()
+  scale_color_viridis_d( "sediment concentration (mg/L)") +
+  ylab("carbon accumulated (g)") +
+  xlab("root:shoot ratio") +
+  ggtitle("C accumulated during 100 year A2 scenario")
 
 ```
 
