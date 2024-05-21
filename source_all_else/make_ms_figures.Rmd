@@ -62,7 +62,76 @@ scenario_plot_CAR | scenario_plot_accretion
 ```
 
 
-```{r fig-4 toal-c-per-scenario-run}
+```{r fig-4-total-c-per-scenario-run-LOAD-DATA}
+dir_name_fig_4_results <- "scenario_runs_fig_4"
+run_dir_full_name<- paste0("../source_cpp_model/model_output/", run_dir_name,"/")
+                       
+series_column_names_NO_ACRETION <-c("Yr", "MHT", "Elevation", "Biomass", 
+                          "Silt", "Ref", "Lab","extra_column")
+  
+
+  # run_string_vec <- c("00","01","10","11")
+  # run_string_vec <- c( "0.000", "0.001", "0.005", "0.050")
+  equilibrium_run_files <- list.files(run_dir_full_name)
+ 
+   sed_pattern <- "sed_([0-9.]+)\\.txt" # regex for extracting SLR rate
+   rsr_pattern <- "D_mbm_([0-9.]+)\\_" # regex for extracting SLR rate
+ 
+   
+  cur_result_tibble <- tibble()
+  for(cur_file_name in equilibrium_run_files){
+    # cur_file_name <- equilibrium_run_files[4] #run name
+    # slr_rate <- str_extract(cur_file_name, pattern) %>%  
+    sed_conc <- str_extract(cur_file_name, sed_pattern) %>%  
+      str_extract("[0-9.]+")  %>% 
+      substr(1, nchar(.) - 1) %>%  
+      as.numeric()
+   
+    rsr <-  str_extract(cur_file_name, rsr_pattern) %>%
+      str_extract("[0-9.]+")  %>% 
+      substr(1, nchar(.) - 1) %>%  
+      as.numeric()
+   
+    print(rsr )
+    print(sed_conc)
+    
+    cur_data <- read_delim(
+      paste0(run_dir_full_name,cur_file_name),
+      delim = " ", 
+      col_names = series_column_names_NO_ACRETION,
+      trim_ws = TRUE) %>% 
+      select(-extra_column) %>% 
+      # mutate(Yr=Yr+2010) %>%
+        # filter(Yr>1980) %>%
+      mutate(sed_conc=sed_conc) 
+    
+    #calculate additional fields 
+    cur_data <- cur_data %>% 
+      mutate(total_carbon=Lab+Ref)
+    
+    end_carbon <- cur_data %>% 
+      slice_max(Yr) %>% pull(total_carbon)
+    
+    start_carbon <- cur_data %>% 
+      filter(Yr==100) %>% 
+      pull(total_carbon)
+   
+    carbon_accumulation <- end_carbon - start_carbon 
+    cur_row <- tibble(carbon_accumulation,sed_conc,rsr)
+    cur_result_tibble <- bind_rows(cur_result_tibble,cur_row) 
+  }
+  
+  glimpse(cur_result_tibble)
+
+```
+
+```{r fig-4-total-c-per-scenario-run-MAKE-PLOT}
+
+  cur_result_tibble %>% 
+  mutate(sed_conc_mg=sed_conc*1000) %>% 
+    ggplot(aes(x=rsr,y=carbon_accumulation,group=sed_conc_mg,color=as.factor(sed_conc_mg)))+
+    geom_line() +
+  scale_color_viridis_c()
 
 ```
 

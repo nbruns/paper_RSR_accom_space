@@ -170,73 +170,89 @@ int main()
 	double old_SLR=0;
 	double SLR_increase = 0.0001;
 
+	// define array of RSR values
+	double D_mbm_arg; //declre loop parameter
+	const int rsr_value_count = 10;
+    	double rsr_value_array[rsr_value_count] = {
+    		.25,.5,1,2,3,4,5,6,7,8
+    	};
+    	// for (int i = 0; i <rsr_value_count; ++i) {
+    	//     rsr_value_array[i] = 0.1 * (i + 1);
+    	// }
+
+
 	double sed_conc_array[5] ={.001,.005,.01,.03,.05}; // for S2: 1, 5, and 50 mg/L
+
 	// tot_conc = .001;		// i_ssc is 2, so ssc = 0.01, or 10mg/L
 	//while (SLR_increase >= .0001)	 //MK- I commented this out
-	for (int i = 0; i<=5; i++)
-	{
+	for( int r =1; r<=rsr_value_count; r++){
 
-		double theta_bm_arg =0;
-		// double theta_bm_arg =-6.8;
-		double D_mbm_arg=2.5; //NEB addition
-		tot_conc=sed_conc_array[i];
-		//below lines 3 are fixed transformations of overall silt concentration
-			conc_silt = tot_conc*silt_frac;
-			conc_fs = 0;
-			refrac_frac = 1-labile_frac;
-
-		// kfactor=kfactor_array[i];	// MK- Next 3 lines are to cycle through multiple parameters
-		// bfactor=bfactor_array[i];
-		//NEB-- turn these off for this paper
-		kfactor=0;
-		bfactor=0;
-		cout<< " Run #: " << i+1 << " sed conc: " << tot_conc <<
-			" kfactor= " << kfactor << " bfactor= " << bfactor << endl;
-
-		//SLR = double(i)*0.001;
-		SLR = old_SLR+SLR_increase;
-
-		cout << endl << " fname: " << fname << endl
-			 << "theta_gamma_roots: " << root_efold << endl
-			 << "effective s vel: " << effective_svel << endl
-			 << "labile frac: " << labile_frac << endl
-			 << "SLR is: " << SLR << endl
-			 << "tot_conc is: " << conc_silt << endl
-			 << "tidal amplitude is: " << tA << endl;
-
-
-		int SLR_int = int(SLR*10000);	// saving file with SLRR as the file number
-		string SLR_str = itoa(SLR_int);
-		col_out_fname = col_out_fname_prefix+SLR_str+col_out_fname_suffix;
-		cout << "column fname is: " << col_out_fname << endl;
-		ofstream col_out;
-		col_out.open(col_out_fname.c_str());
-
-
-		time (&start);				// get starting time
-		peak_Bmass = column_model(SLR,kfactor, bfactor, tA,conc_silt,conc_fs,
-				   labile_frac, refrac_frac,
-				   root_efold, effective_svel, start_depth_frac,
-				   data_out, col_out,
-				   theta_bm_arg,
-				   D_mbm_arg);
-		time (&end);					// get ending time
-		dif = difftime (end,start);
-		cout << "\nruntime was: " << dif << " seconds\n";
-		col_out.close();
-
-		if (peak_Bmass > 0)			// we want SLR to go up when eq depth is approached, as long as plants remain. Stop everything when plants die.
+		for (int s = 0; s<5; s++)
 		{
-			old_SLR = SLR;
+
+			double theta_bm_arg =0;
+			// double theta_bm_arg =-6.8;
+			// double D_mbm_arg=2.5; //NEB addition
+			D_mbm_arg=rsr_value_array[r]; //NEB addition
+			tot_conc=sed_conc_array[s];
+			//below lines 3 are fixed transformations of overall silt concentration
+				conc_silt = tot_conc*silt_frac;
+				conc_fs = 0;
+				refrac_frac = 1-labile_frac;
+
+			// kfactor=kfactor_array[i];	// MK- Next 3 lines are to cycle through multiple parameters
+			// bfactor=bfactor_array[i];
+			//NEB-- turn these off for this paper
+			kfactor=0;
+			bfactor=0;
+			cout<<  " sed conc: " << tot_conc <<
+				" kfactor= " << kfactor << " bfactor= " << bfactor << endl;
+
+			//SLR = double(i)*0.001;
+			SLR = old_SLR+SLR_increase;
+
+			cout << endl << " fname: " << fname << endl
+				 << "theta_gamma_roots: " << root_efold << endl
+				 << "effective s vel: " << effective_svel << endl
+				 << "labile frac: " << labile_frac << endl
+				 << "SLR is: " << SLR << endl
+				 << "tot_conc is: " << conc_silt << endl
+				 << "tidal amplitude is: " << tA << endl;
+
+
+			int SLR_int = int(SLR*10000);	// saving file with SLRR as the file number
+			string SLR_str = itoa(SLR_int);
+			col_out_fname = col_out_fname_prefix+SLR_str+col_out_fname_suffix;
+			cout << "column fname is: " << col_out_fname << endl;
+			ofstream col_out;
+			col_out.open(col_out_fname.c_str());
+
+
+			time (&start);				// get starting time
+			peak_Bmass = column_model(SLR,kfactor, bfactor, tA,conc_silt,conc_fs,
+					   labile_frac, refrac_frac,
+					   root_efold, effective_svel, start_depth_frac,
+					   data_out, col_out,
+					   theta_bm_arg,
+					   D_mbm_arg);
+			time (&end);					// get ending time
+			dif = difftime (end,start);
+			cout << "\nruntime was: " << dif << " seconds\n";
+			col_out.close();
+
+			if (peak_Bmass > 0)			// we want SLR to go up when eq depth is approached, as long as plants remain. Stop everything when plants die.
+			{
+				old_SLR = SLR;
+			}
+			else
+			{
+				cout << "Plants died at SLR = " << SLR << " m/yr" << endl;
+				//SLR_increase = SLR_increase/2;
+				SLR_increase=0;
+			}
 		}
-		else
-		{
-			cout << "Plants died at SLR = " << SLR << " m/yr" << endl;
-			//SLR_increase = SLR_increase/2;
-			SLR_increase=0;
-		}
+
 	}
-
 
 
 	data_out.close();
