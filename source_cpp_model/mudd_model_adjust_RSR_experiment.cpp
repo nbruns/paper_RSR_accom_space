@@ -96,7 +96,7 @@ double column_model(double RSLR, double kfactor, double bfactor, double tA, doub
 				  double labile_frac, double refrac_frac,
 				  double theta_root_efold, double effective_svel, double starting_depth_frac,
 				  ofstream& data_out, ofstream& col_out,
-				  double theta_bm_arg, double D_mbm_arg);
+				  double theta_bm_arg, double D_mbm_1_arg, double D_mbm_2_arg);
 
 // a utility function used to convert integers to strings
 string itoa(int num);
@@ -170,71 +170,83 @@ int main()
 	double old_SLR=0.0005;
 	double SLR_increase = 0.0005;
 
-	double sed_conc_array[3] ={.001,.005,.05}; // for S2: 1, 5, and 50 mg/L
-	// tot_conc = .001;		// i_ssc is 2, so ssc = 0.01, or 10mg/L
-	while (SLR_increase >= .0001)	 //MK- I commented this out
-	// for (int i = 0; i<=3; i++)
-	{
+	// full run
 
-		double theta_bm_arg =0;
-		// double theta_bm_arg =-6.8;
-		double D_mbm_arg=2.5; //NEB addition
-		// tot_conc=sed_conc_array[i];
-		tot_conc=.001;
-		// tot_conc=sed_conc_array[i];
-		//below lines 3 are fixed transformations of overall silt concentration
-			conc_silt = tot_conc*silt_frac;
-			conc_fs = 0;
-			refrac_frac = 1-labile_frac;
+	// int s_count=2;
+	// double sed_conc_array[s_count] ={.005,.05}; // for S2: 5, and 50 mg/L
+	// int r_count=4;
+	// double slr_array[r_count]={.001,.003,.005,.01};
+	// int a_count=4;
+	// double d_bmb_2_array[a_count]={1,2,3,4};
+	// //debug run
 
-		// kfactor=kfactor_array[i];	// MK- Next 3 lines are to cycle through multiple parameters
-		// bfactor=bfactor_array[i];
-		// cout<< " Run #: " << i+1 << " sed conc: " << tot_conc <<
-		// 	" kfactor= " << kfactor << " bfactor= " << bfactor << endl;
+	const int s_count=2;
+	double sed_conc_array[s_count] ={.005,.05}; // for S2: 5, and 50 mg/L
+	const int r_count=2;
+	double slr_array[r_count]={.001,.003};
+	const int a_count=2;
+	double d_mbm_2_array[a_count]={1,4};
 
-		//SLR = double(i)*0.001;
-		SLR = old_SLR+SLR_increase;
+	double D_mbm_1_arg=2; //for runup, make it 2
+	double D_mbm_2_arg;
 
-		cout << endl << " fname: " << fname << endl
-			 << "theta_gamma_roots: " << root_efold << endl
-			 << "effective s vel: " << effective_svel << endl
-			 << "labile frac: " << labile_frac << endl
-			 << "SLR is: " << SLR << endl
-			 << "tot_conc is: " << conc_silt << endl
-			 << "tidal amplitude is: " << tA << endl;
-
-
-		int SLR_int = int(SLR*10000);	// saving file with SLRR as the file number
-		string SLR_str = itoa(SLR_int);
-		col_out_fname = col_out_fname_prefix+SLR_str+col_out_fname_suffix;
-		cout << "column fname is: " << col_out_fname << endl;
-		ofstream col_out;
-		col_out.open(col_out_fname.c_str());
+	for(int r=0;r<r_count;r++){
+		for(int s=0;s<s_count;s++){
+			for(int a=0;a<a_count;a++){
+				double theta_bm_arg =0; //turns of dynamic RSR ratio
+				SLR= slr_array[r];
+				D_mbm_1_arg = 2;
+				D_mbm_2_arg =  d_mbm_2_array[a];
+				tot_conc=sed_conc_array[s];
+				//below lines 3 are fixed transformations of overall silt concentration
+					conc_silt = tot_conc*silt_frac;
+					conc_fs = 0;
+					refrac_frac = 1-labile_frac;
 
 
-		time (&start);				// get starting time
-		peak_Bmass = column_model(SLR,kfactor, bfactor, tA,conc_silt,conc_fs,
-				   labile_frac, refrac_frac,
-				   root_efold, effective_svel, start_depth_frac,
-				   data_out, col_out,
-				   theta_bm_arg,
-				   D_mbm_arg);
-		time (&end);					// get ending time
-		dif = difftime (end,start);
-		cout << "\nruntime was: " << dif << " seconds\n";
-		col_out.close();
+				cout << endl << " fname: " << fname << endl
+					 << "theta_gamma_roots: " << root_efold << endl
+					 << "effective s vel: " << effective_svel << endl
+					 << "labile frac: " << labile_frac << endl
+					 << "SLR is: " << SLR << endl
+					 << "tot_conc is: " << conc_silt << endl
+					 << "tidal amplitude is: " << tA << endl;
 
-		if (peak_Bmass > 0)			// we want SLR to go up when eq depth is approached, as long as plants remain. Stop everything when plants die.
-		{
-			old_SLR = SLR;
-		}
-		else
-		{
-			cout << "Plants died at SLR = " << SLR << " m/yr" << endl;
-			//SLR_increase = SLR_increase/2;
-			SLR_increase=0;
-		}
-	}
+
+				int SLR_int = int(SLR*10000);	// saving file with SLRR as the file number
+				string SLR_str = itoa(SLR_int);
+				col_out_fname = col_out_fname_prefix+SLR_str+col_out_fname_suffix;
+				cout << "column fname is: " << col_out_fname << endl;
+				ofstream col_out;
+				col_out.open(col_out_fname.c_str());
+
+
+				time (&start);				// get starting time
+				peak_Bmass = column_model(SLR,kfactor, bfactor, tA,conc_silt,conc_fs,
+						   labile_frac, refrac_frac,
+						   root_efold, effective_svel, start_depth_frac,
+						   data_out, col_out,
+						   theta_bm_arg,
+						   D_mbm_1_arg,D_mbm_2_arg);
+				time (&end);					// get ending time
+				dif = difftime (end,start);
+				cout << "\nruntime was: " << dif << " seconds\n";
+				col_out.close();
+
+				if (peak_Bmass > 0)			// we want SLR to go up when eq depth is approached, as long as plants remain. Stop everything when plants die.
+				{
+					old_SLR = SLR;
+				}
+				else
+				{
+					cout << "Plants died at SLR = " << SLR << " m/yr" << endl;
+					//SLR_increase = SLR_increase/2;
+					SLR_increase=0;
+				}
+	
+			}
+		}	
+	}		
 
 
 
@@ -252,7 +264,8 @@ double column_model(double RSLR, double kfactor, double bfactor, double tA, doub
 				  double theta_root_efold, double effective_svel, double start_depth_frac,
 				  ofstream& data_out, ofstream& col_out,
 				  double theta_bm_arg, //NEB addition
-				  double D_mbm_arg //NEB addition
+				  double D_mbm_1_arg,
+				  double D_mbm_2_arg //NEB addition
 				  )
 {
 
@@ -490,7 +503,7 @@ double column_model(double RSLR, double kfactor, double bfactor, double tA, doub
 		// with values of paramter sweep-- RSR ratio and sed load
 	theta_bm = theta_bm_arg; // NEB addition-- this overwrites param file so
 			//now, this value is handspecified in main() function
-	D_mbm = D_mbm_arg;
+	// D_mbm = D_mbm_arg; now there's 2, and they are defined above
 	for (int i = 0; i< n_carbon_types; i++)								//
 	{																	//
 		paramfile >> temp_int;											//
@@ -644,17 +657,14 @@ double column_model(double RSLR, double kfactor, double bfactor, double tA, doub
 		t_ime = yr*365;
 		yr_time = t_ime/365;
 
-	//NEB -- remove scenario code
-		// if (yr<=runup)		
-		// {SLR= .0017;}
-		// else
-		// {SLR=slvector[yr-runup]-slvector[yr-runup-1];} //MK- I added this line to cacluate the rate of sea level rise from the loaded file
-		
-		// if (yr<=runup)
-		// {temperatureincrease=0;}//temperaturevector[yr]-temperaturevector[0]; //MK- I added this line too
-		// else
-		// {temperatureincrease=temperaturevector[yr-runup]-temperaturevector[0];}		
-	//
+	//NEB -- I've replaced scenario code so now instead of reading in sea level vector
+		// at that time it changes RSR
+		if (yr<=runup){
+			D_mbm=D_mbm_1_arg;
+		}else{
+			D_mbm=D_mbm_2_arg;
+		}
+
 		temperatureincrease=0;
 		// reset the biomass
 		Bmass = 0;
@@ -958,9 +968,9 @@ double column_model(double RSLR, double kfactor, double bfactor, double tA, doub
    	// MK- New function to save time series data
 	ofstream series_out;
 	//all below is NEB hack for clean runs
-	string run_name = "equilibrium_with_parabola"; //"equilibrium_runs";//"test_run_dir"; // This probably aught to be a parm passed in at runtime
+	string run_name = "RSR_adjust_constant_SLR"; //"equilibrium_runs";//"test_run_dir"; // This probably aught to be a parm passed in at runtime
 	string output_dir="model_output/" + run_name + "/";
-	string fname2_prefix= output_dir + "series."; //NEB hack 
+	string fname2_prefix= output_dir + "RSR_adjust_"; //NEB hack 
 	// string fname2_prefix="series."; //NEB hack 
 	// end neb hack
 	string fname2_suffix=".txt";
@@ -980,10 +990,17 @@ double column_model(double RSLR, double kfactor, double bfactor, double tA, doub
 	string fname2_silt_conc = "sed_" + stream_sed.str();
 
 
-	// For D_mbm
-	ostringstream stream_D_mbm;
-	stream_D_mbm << fixed << setprecision(3) << D_mbm;  // Set precision as needed
-	string fname2_D_mbm = "D_mbm_" + stream_D_mbm.str();
+	// For D_mbm_1
+	ostringstream stream_D_mbm_1;
+	stream_D_mbm_1 << fixed << setprecision(1) << D_mbm_1_arg;  // Set precision as needed
+	string fname2_D_mbm_1 = "RSR1_" + stream_D_mbm_1.str();
+
+	// For D_mbm_2
+	ostringstream stream_D_mbm_2;
+	stream_D_mbm_2 << fixed << setprecision(1) << D_mbm_2_arg;  // Set precision as needed
+	string fname2_D_mbm_2 = "RSR2_" + stream_D_mbm_2.str();
+
+
 
 	// For SLR
 	ostringstream stream_SLR;
@@ -993,8 +1010,10 @@ double column_model(double RSLR, double kfactor, double bfactor, double tA, doub
 
 	// end new code for floating point string casting
 	string fname2=fname2_prefix+
-		fname2_theta_bm+"_"+"Mattcasestring_"+fname2_k+fname2_b+
-		"_"+fname2_D_mbm+"_"+fname2_silt_conc+ "_" + fname2_SLR +
+		fname2_D_mbm_1 + "_" +
+		fname2_D_mbm_2 + "_" +
+		fname2_silt_conc + "_" +
+		fname2_SLR +
 		fname2_suffix;
 	series_out.open(fname2.c_str());
 	//series_out.open("series.txt", ios::out); // This simpler version didn't allow multiple output files for multiple parameters
