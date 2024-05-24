@@ -172,20 +172,22 @@ int main()
 
 	// full run
 
-	// int s_count=2;
+	const int s_count=6;
+	double sed_conc_array[s_count] ={.005,.01,.02,.03,.04,.05}; // for S2: 5, and 50 mg/L
 	// double sed_conc_array[s_count] ={.005,.05}; // for S2: 5, and 50 mg/L
-	// int r_count=4;
+	const int r_count=8;
+	double slr_array[r_count]={.001,.0025,.005,.0075,.01,.0125,.015,.02};
 	// double slr_array[r_count]={.001,.003,.005,.01};
-	// int a_count=4;
-	// double d_bmb_2_array[a_count]={1,2,3,4};
+	const int a_count=4;
+	double d_mbm_2_array[a_count]={1,2,3,4};
 	// //debug run
 
-	const int s_count=2;
-	double sed_conc_array[s_count] ={.005,.05}; // for S2: 5, and 50 mg/L
-	const int r_count=2;
-	double slr_array[r_count]={.001,.003};
-	const int a_count=2;
-	double d_mbm_2_array[a_count]={1,4};
+	// const int s_count=2;
+	// double sed_conc_array[s_count] ={.005,.05}; // for S2: 5, and 50 mg/L
+	// const int r_count=2;
+	// double slr_array[r_count]={.001,.003};
+	// const int a_count=2;
+	// double d_mbm_2_array[a_count]={1,4};
 
 	double D_mbm_1_arg=2; //for runup, make it 2
 	double D_mbm_2_arg;
@@ -1004,7 +1006,7 @@ double column_model(double RSLR, double kfactor, double bfactor, double tA, doub
 
 	// For SLR
 	ostringstream stream_SLR;
-	stream_SLR << fixed << setprecision(4) << SLR;  // Set precision as needed
+	stream_SLR << fixed << setprecision(5) << SLR;  // Set precision as needed
 	string fname2_SLR = "SLR_" + stream_SLR.str();
 
 

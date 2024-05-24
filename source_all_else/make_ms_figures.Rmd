@@ -129,49 +129,159 @@ RSR_adjust_tibble <- tibble()
 
   RSR_adjust_tibble %>% pull(rsr) %>% table()
 ```
-```{r ig-1-rsr-adjust-MAKE-PLOT}
-low_sed <- RSR_adjust_tibble %>% 
-  filter(sed_conc==.005) %>% 
-  select(
-   Yr,sed_conc,SLR,
-   rsr,
-   accretion_mm_yr,CAR_g_yr,Biomass,depth,silt_deposition_g_yr
-  ) %>% 
-  filter(Yr>50) %>% 
-  filter(SLR==.003) %>% 
-  pivot_longer(-c(Yr,sed_conc,SLR,rsr)) %>% 
-  ggplot(aes(x=Yr,y=value,group=as.factor(rsr),color=as.factor(rsr))) +
-  geom_line() +
-  # facet_grid(name~sed_conc,scales = "free_y") +
-  facet_wrap(~name,scales = "free_y",ncol=1) +
-  scale_color_manual(values= c("darkgreen","brown"),"root:shoot ratio") +
-  ggtitle("sed concentration = 5 mg/L") +
-  ylab(NULL)
-  # ggplot(aes(x=Yr,y=))
- # low_sed 
- 
-high_sed <- RSR_adjust_tibble %>% 
-  filter(sed_conc==.05) %>% 
-  select(
-   Yr,sed_conc,SLR,
-   rsr,
-   accretion_mm_yr,CAR_g_yr,Biomass,depth,silt_deposition_g_yr
-  ) %>% 
-  filter(Yr>50) %>% 
-  filter(SLR==.003) %>% 
-  pivot_longer(-c(Yr,sed_conc,SLR,rsr)) %>% 
-  ggplot(aes(x=Yr,y=value,group=as.factor(rsr),color=as.factor(rsr))) +
-  geom_line() +
-  # facet_grid(name~sed_conc,scales = "free_y") +
-  facet_wrap(~name,scales = "free_y",ncol=1) +
-  scale_color_manual(values= c("darkgreen","brown"),"root:shoot ratio") +
-  ylab(NULL)+
-  ggtitle("sed concentration = 50 mg/L")
-  # ggplot(aes(x=Yr,y=))
- (low_sed  | high_sed) + plot_layout(guides = 'collect')
+```{r fig-1-rsr-adjust-MAKE-PLOT}
+# recquires RSR_adjust_tibble
+fig_1_make_plot <- function(results_tibble_arg,slr_arg){
+  
+  low_sed <- results_tibble_arg %>% 
+    # filter(rsr %in% c(1,3)) %>% 
+    filter(rsr %in% c(1,4)) %>% 
+    filter(sed_conc==.005) %>% 
+    
+    select(
+     Yr,sed_conc,SLR,
+     rsr,
+     accretion_mm_yr,CAR_g_yr,Biomass,depth,silt_deposition_g_yr
+    ) %>% 
+    filter(Yr>50) %>% 
+    filter(SLR==slr_arg) %>% 
+    pivot_longer(-c(Yr,sed_conc,SLR,rsr)) %>% 
+    ggplot(aes(x=Yr,y=value,group=as.factor(rsr),color=as.factor(rsr))) +
+    geom_line() +
+    # facet_grid(name~sed_conc,scales = "free_y") +
+    facet_wrap(~name,scales = "free_y",ncol=1) +
+    scale_color_manual(values= c("darkgreen","brown"),"root:shoot ratio") +
+    ggtitle(paste0("SLR: ",slr_arg,", sed: 5 mg/L")) +
+    ylab(NULL)
+    # ggplot(aes(x=Yr,y=))
+   # low_sed 
+   
+  high_sed <- results_tibble_arg %>% 
+      # filter(rsr %in% c(1,3)) %>% 
+      filter(rsr %in% c(1,4)) %>% 
+    filter(sed_conc==.05) %>% 
+    select(
+     Yr,sed_conc,SLR,
+     rsr,
+     accretion_mm_yr,CAR_g_yr,Biomass,depth,silt_deposition_g_yr
+    ) %>% 
+    filter(Yr>50) %>% 
+    filter(SLR==slr_arg) %>% 
+    pivot_longer(-c(Yr,sed_conc,SLR,rsr)) %>% 
+    ggplot(aes(x=Yr,y=value,group=as.factor(rsr),color=as.factor(rsr))) +
+    geom_line() +
+    # facet_grid(name~sed_conc,scales = "free_y") +
+    facet_wrap(~name,scales = "free_y",ncol=1) +
+    scale_color_manual(values= c("darkgreen","brown"),"root:shoot ratio") +
+    ylab(NULL)+
+    ggtitle(paste0("SLR: ",slr_arg,", sed: 50 mg/L")) 
+    # ggplot(aes(x=Yr,y=))
+   (low_sed  | high_sed) + plot_layout(guides = 'collect')
+   
+}
+
+
+# fig_1_make_plot (RSR_adjust_tibble,.003) 
+fig_1_make_plot (RSR_adjust_tibble,.01) 
+# fig_1_make_plot (RSR_adjust_tibble,.001) 
  
  
 ```
+
+```{r fig-2-delta-C-MAKE-DATA}
+#could load these 1 at a time and make table, so I could sweep a larger set
+compute_delta_C <- function(sed_conc_arg,slr_arg,RSR_change_arg){
+  low_RSR <- 1 #could make this an arg
+  
+  # sed_conc_arg <- .05
+  # slr_arg <- .01
+  
+  
+  cur_run <- RSR_adjust_tibble %>% 
+    filter(sed_conc==sed_conc_arg) %>% 
+    filter(SLR==slr_arg) %>% 
+    filter(rsr %in% c(1,RSR_change_arg)) 
+  
+  baseline_year <- 99 
+  final_year <- 199
+  baseline_CAR <- cur_run %>%
+  # cur_run %>% 
+    filter(Yr==baseline_year) %>% 
+    filter(rsr==low_RSR) %>% #they are identical, so just grab the first
+    pull(CAR_g_yr)
+  
+  final_CAR<- cur_run %>%
+  # cur_run %>%
+    filter(rsr==RSR_change_arg) %>% 
+    filter(Yr==final_year) %>% 
+    pull(CAR_g_yr)
+    
+  
+  (final_CAR- baseline_CAR)/baseline_CAR
+}
+
+
+slr_vec <- RSR_adjust_tibble %>% pull(SLR) %>% unique() %>% as.numeric()
+sed_conc_vec <- RSR_adjust_tibble %>% pull(sed_conc) %>% unique() %>% as.numeric()
+RSR_vec <- RSR_adjust_tibble %>% pull(rsr) %>% unique() %>% as.numeric()
+
+fig_2_tibble <- tibble()
+for(cur_slr in slr_vec){
+  for(cur_sed_conc in sed_conc_vec){
+    for(cur_RSR in RSR_vec){
+      # cur_sed_conc <- sed_conc_vec[1]
+      # cur_slr <- slr_vec[1]
+      # cur_RSR <- RSR_vec[1]
+      
+       cur_delta_c_pcnt <- compute_delta_C(
+         sed_conc_arg = cur_sed_conc,
+         slr_arg =  cur_slr,
+         RSR_change_arg= cur_RSR)
+       
+       
+       
+       cur_row <- tibble(delta_c_pcnt=cur_delta_c_pcnt,
+                         sed_conc=cur_sed_conc,
+                         SLR=cur_slr,
+                         RSR=cur_RSR
+                         )
+       fig_2_tibble <- bind_rows(fig_2_tibble,cur_row)
+    }
+  }
+}
+
+fig_2_tibble %>% glimpse()
+
+```
+
+```{r fig-2-delta-C-MAKE-PLOT}
+   
+fig_2_tibble %>% 
+  filter(RSR %in% c(1,4)) %>% 
+  ggplot(aes(x = SLR, y = delta_c_pcnt, color = as.factor(sed_conc*1000), group = interaction(sed_conc, RSR))) +
+  geom_point() +
+  geom_line() +
+  geom_hline(yintercept = 0) +
+  labs(color = "Sed. Conc. (mg/L)") +  # Optionally add a label for the legend
+  scale_color_brewer(palette = "Set1")
+
+
+```
+
+```{r fig-2-delta-C-ALT-VIEW}
+fig_2_tibble %>% 
+  # filter(SLR %in% )
+  filter(RSR %in% c(1,4)) %>% 
+  ggplot(aes(x = sed_conc, y = delta_c_pcnt, color = as.factor(SLR), group = interaction(SLR, RSR))) +
+  geom_point() +
+  geom_line() +
+  geom_hline(yintercept = 0) +
+  # labs(color = "Sed. Conc. (mg/L)") +  # Optionally add a label for the legend
+  labs(color = "SLR (m/yr)") +  # Optionally add a label for the legend
+  scale_color_brewer(palette = "Set1")
+
+```
+
 
 
 ```{r fig-4-total-c-per-scenario-run-LOAD-DATA}
