@@ -128,7 +128,8 @@ int main()
 	double gi_multiplier;
 	double effective_svel;
 	double tA;				// the tidal amplitude
-	double peak_Bmass;		// this is returned from the model loop
+	double peak_Bmass = 1;		// this is returned from the model loop 
+	
 
 	string s_temp;
 	string num;
@@ -167,73 +168,92 @@ int main()
 	// if the biomass is 0, then the model has overshot
 	// so the model increases the SLR by half the value it increased
 	// previously and runs again#
-	double old_SLR=0.0005;
-	double SLR_increase = 0.0005;
+	double inital_SLR=.011;
+	// double inital_SLR=0.02;
+	double SLR_increase = 0.001;
 
-	double sed_conc_array[3] ={.001,.005,.05}; // for S2: 1, 5, and 50 mg/L
-	// tot_conc = .001;		// i_ssc is 2, so ssc = 0.01, or 10mg/L
-	while (SLR_increase >= .0001)	 //MK- I commented this out
-	// for (int i = 0; i<=3; i++)
-	{
+	// const int s_count= 6;
+	// double sed_conc_array[s_count] ={.005,.01,.02,.03,.04,.05}; // for S2: 1, 5, and 50 mg/L
+	// const int s_count= 2;
+	// double sed_conc_array[s_count] ={.005,.05}; // for S2: 1, 5, and 50 mg/L
+	const int s_count= 3;
+	double sed_conc_array[s_count] ={.005,.01,.02}; // for S2: 1, 5, and 50 mg/L
+	// const int a_count=1;
+	// double d_mbm_array[a_count]={2};
+	const int a_count=3;
+	double d_mbm_array[a_count]={1,2,4};
+	// double d_mbm_array[a_count]={1,2,3,4};
+	double D_mbm_arg; //NEB addition
+	for(int s=0;s<s_count;s++){
+		for(int a=0;a<a_count;a++){
 
-		double theta_bm_arg =0;
-		// double theta_bm_arg =-6.8;
-		double D_mbm_arg=2.5; //NEB addition
-		// tot_conc=sed_conc_array[i];
-		tot_conc=.001;
-		// tot_conc=sed_conc_array[i];
-		//below lines 3 are fixed transformations of overall silt concentration
-			conc_silt = tot_conc*silt_frac;
-			conc_fs = 0;
-			refrac_frac = 1-labile_frac;
+			double theta_bm_arg =0;
+			// double theta_bm_arg =-6.8;
+			// double D_mbm_arg=2; //NEB addition
+			D_mbm_arg=d_mbm_array[a];
+			// tot_conc=sed_conc_array[i];
+			// tot_conc=.05; //50 mg/L
+			tot_conc=sed_conc_array[s];
+			//below lines 3 are fixed transformations of overall silt concentration
+				conc_silt = tot_conc*silt_frac;
+				conc_fs = 0;
+				refrac_frac = 1-labile_frac;
 
-		// kfactor=kfactor_array[i];	// MK- Next 3 lines are to cycle through multiple parameters
-		// bfactor=bfactor_array[i];
-		// cout<< " Run #: " << i+1 << " sed conc: " << tot_conc <<
-		// 	" kfactor= " << kfactor << " bfactor= " << bfactor << endl;
+			kfactor=0;
+			bfactor=0;
+			SLR = inital_SLR;
+			peak_Bmass = 1; //reinitialize loop condition
+			while(peak_Bmass > 0){
+				SLR= SLR + SLR_increase;
 
-		//SLR = double(i)*0.001;
-		SLR = old_SLR+SLR_increase;
-
-		cout << endl << " fname: " << fname << endl
-			 << "theta_gamma_roots: " << root_efold << endl
-			 << "effective s vel: " << effective_svel << endl
-			 << "labile frac: " << labile_frac << endl
-			 << "SLR is: " << SLR << endl
-			 << "tot_conc is: " << conc_silt << endl
-			 << "tidal amplitude is: " << tA << endl;
-
-
-		int SLR_int = int(SLR*10000);	// saving file with SLRR as the file number
-		string SLR_str = itoa(SLR_int);
-		col_out_fname = col_out_fname_prefix+SLR_str+col_out_fname_suffix;
-		cout << "column fname is: " << col_out_fname << endl;
-		ofstream col_out;
-		col_out.open(col_out_fname.c_str());
+				// SLR = slr_array[r];
+				cout << endl << " fname: " << fname << endl
+					 << "theta_gamma_roots: " << root_efold << endl
+					 << "effective s vel: " << effective_svel << endl
+					 << "labile frac: " << labile_frac << endl
+					 << "SLR is: " << SLR << endl
+					 << "tot_conc is: " << conc_silt << endl
+					 << "tidal amplitude is: " << tA << endl;
 
 
-		time (&start);				// get starting time
-		peak_Bmass = column_model(SLR,kfactor, bfactor, tA,conc_silt,conc_fs,
-				   labile_frac, refrac_frac,
-				   root_efold, effective_svel, start_depth_frac,
-				   data_out, col_out,
-				   theta_bm_arg,
-				   D_mbm_arg);
-		time (&end);					// get ending time
-		dif = difftime (end,start);
-		cout << "\nruntime was: " << dif << " seconds\n";
-		col_out.close();
+				int SLR_int = int(SLR*1000);	// saving file with SLRR as the file number
+				string SLR_str = itoa(SLR_int);
+				col_out_fname = col_out_fname_prefix+SLR_str+col_out_fname_suffix;
+				cout << "column fname is: " << col_out_fname << endl;
+				ofstream col_out;
+				col_out.open(col_out_fname.c_str());
 
-		if (peak_Bmass > 0)			// we want SLR to go up when eq depth is approached, as long as plants remain. Stop everything when plants die.
-		{
-			old_SLR = SLR;
+
+				time (&start);				// get starting time
+				peak_Bmass = column_model(SLR,kfactor, bfactor, tA,conc_silt,conc_fs,
+				// final_Depth = column_model(SLR,kfactor, bfactor, tA,conc_silt,conc_fs,
+						   labile_frac, refrac_frac,
+						   root_efold, effective_svel, start_depth_frac,
+						   data_out, col_out,
+						   theta_bm_arg,
+						   D_mbm_arg);
+				time (&end);					// get ending time
+				dif = difftime (end,start);
+				cout << "\nruntime was: " << dif << " seconds\n";
+				col_out.close();
+
+				// cout << "\nfinal depth: " << final_Depth << endl;
+			// //below is all vestigal code, should be deleted
+			// 	if (final_Depth  < D_max)			// we want SLR to go up when eq depth is approached, as long as plants remain. Stop everything when plants die.
+			// 	{
+			// 		old_SLR = SLR;
+			// 	}
+			// 	else
+			// 	{
+			// 		cout << "Plants died at SLR = " << SLR << " m/yr" << endl;
+			// 		//SLR_increase = SLR_increase/2;
+			// 		SLR_increase=0;
+			// 	}
+			// //end vestigal code
+
+			}
 		}
-		else
-		{
-			cout << "Plants died at SLR = " << SLR << " m/yr" << endl;
-			//SLR_increase = SLR_increase/2;
-			SLR_increase=0;
-		}
+
 	}
 
 
@@ -347,8 +367,8 @@ double column_model(double RSLR, double kfactor, double bfactor, double tA, doub
 											// layer of an annual band
 	int ab_pointer_sz;
 
+	// int end_year = 300;				// the final year	
 	int end_year = 200;				// the final year	
-	// int end_year = 200;				// the final year	
 							// if you change this, check line 631
 							//int runup=end_year-100;
 						//MK- I changed this from 1500 to 10000
@@ -679,7 +699,6 @@ double column_model(double RSLR, double kfactor, double bfactor, double tA, doub
 		   max_depth, min_depth, max_bmass);
 		
 
-
 		if (yr==1) // MK- I added these 2 lines
 		{boriginal=peak_Bmass;}
 
@@ -958,9 +977,9 @@ double column_model(double RSLR, double kfactor, double bfactor, double tA, doub
    	// MK- New function to save time series data
 	ofstream series_out;
 	//all below is NEB hack for clean runs
-	string run_name = "equilibrium_with_parabola"; //"equilibrium_runs";//"test_run_dir"; // This probably aught to be a parm passed in at runtime
+	string run_name = "dev_out";//"equilibrium_get_drowning_slr"; //"equilibrium_runs";//"test_run_dir"; // This probably aught to be a parm passed in at runtime
 	string output_dir="model_output/" + run_name + "/";
-	string fname2_prefix= output_dir + "series."; //NEB hack 
+	string fname2_prefix= output_dir + "threshold.slr"; //NEB hack 
 	// string fname2_prefix="series."; //NEB hack 
 	// end neb hack
 	string fname2_suffix=".txt";
@@ -977,13 +996,13 @@ double column_model(double RSLR, double kfactor, double bfactor, double tA, doub
 	// For conc_silt
 	ostringstream stream_sed;
 	stream_sed << fixed << setprecision(3) << conc_silt;  // Set precision as needed
-	string fname2_silt_conc = "sed_" + stream_sed.str();
+	string fname2_silt_conc = "sed.conc_" + stream_sed.str();
 
 
 	// For D_mbm
-	ostringstream stream_D_mbm;
-	stream_D_mbm << fixed << setprecision(3) << D_mbm;  // Set precision as needed
-	string fname2_D_mbm = "D_mbm_" + stream_D_mbm.str();
+	ostringstream stream_rsr;
+	stream_rsr << fixed << setprecision(3) << D_mbm;  // Set precision as needed
+	string fname2_rsr = "RSR_" + stream_rsr.str();
 
 	// For SLR
 	ostringstream stream_SLR;
@@ -992,9 +1011,9 @@ double column_model(double RSLR, double kfactor, double bfactor, double tA, doub
 
 
 	// end new code for floating point string casting
-	string fname2=fname2_prefix+
-		fname2_theta_bm+"_"+"Mattcasestring_"+fname2_k+fname2_b+
-		"_"+fname2_D_mbm+"_"+fname2_silt_conc+ "_" + fname2_SLR +
+	string fname2=fname2_prefix+ "_" +
+		fname2_rsr+"_"+
+		fname2_silt_conc + 
 		fname2_suffix;
 	series_out.open(fname2.c_str());
 	//series_out.open("series.txt", ios::out); // This simpler version didn't allow multiple output files for multiple parameters
@@ -1008,8 +1027,13 @@ double column_model(double RSLR, double kfactor, double bfactor, double tA, doub
 	//filename code: 00= no enhanced decay or productivity, 10= enhanced decay only, 01=enhanced prod only, 11=enhanced decay and productivity,
 	////////////////////
 
+double final_MHT = TimeSeries_MHT.back();
+double final_Elevation = TimeSeries_Elevation.back();
+double final_Depth = final_MHT - final_Elevation;
 
-   return peak_Bmass;
+// return final_Depth;
+return peak_Bmass; //NEB replaced return value for detecting threshold SLR
+
 
 
 }
@@ -1346,7 +1370,7 @@ double get_peak_biomass(double surface_elevation, double MHT,
  }
 
 /********************************************************
-// this returns the peak biomass is g/m^2
+// this returns the peak biomass in g/m^2
 ******************************************************/
 double get_peak_biomass_parab(double surface_elevation, double MHT,
 		   double max_depth, double min_depth, double max_bmass)
@@ -1356,23 +1380,19 @@ double get_peak_biomass_parab(double surface_elevation, double MHT,
   double B_ps;
   double a;
 
-  //cout << "LINE 688 MHT: " << MHT << " z: " << surface_elevation
-  //     << " d: " << water_depth << " max_MB: " << max_bmass << endl;
-  //cout << "LINE 690 multiplier: " << (water_depth - min_depth)/(depth_range) << endl;
-  if (water_depth > max_depth)
-   B_ps = 0;
-  else if (water_depth < min_depth)
-   B_ps = 0;
-  else
+
+  if (water_depth > max_depth || water_depth < min_depth){
+	  B_ps = 0;
+	} else {
 
  // Below is the inhereited parabola function, which is not quite right-- 	
  	//the max biomass is too low
-  // B_ps = max_bmass*(water_depth-min_depth)*(max_depth-water_depth); // 
+	  // B_ps = max_bmass*(water_depth-min_depth)*(max_depth-water_depth); // 
   //New biomass function from NEB:
 	a = -4 * max_bmass / (depth_range * depth_range);
 	B_ps = a * (water_depth - min_depth) * (water_depth - max_depth);
+	}
 
-  //cout << "Line 698 min_depth: " << min_depth << " B_ps: " << B_ps << endl;
   return B_ps;
  }
 
