@@ -1377,25 +1377,22 @@ double get_peak_biomass_parab(double surface_elevation, double MHT,
   double B_ps;
   double a;
 
-  //cout << "LINE 688 MHT: " << MHT << " z: " << surface_elevation
-  //     << " d: " << water_depth << " max_MB: " << max_bmass << endl;
-  //cout << "LINE 690 multiplier: " << (water_depth - min_depth)/(depth_range) << endl;
-  if (water_depth > max_depth)
-   B_ps = 0;
-  else if (water_depth < min_depth)
-   B_ps = 0;
-  else
+
+  if (water_depth > max_depth || water_depth < min_depth){
+	  B_ps = 0;
+	} else {
 
  // Below is the inhereited parabola function, which is not quite right-- 	
  	//the max biomass is too low
-  // B_ps = max_bmass*(water_depth-min_depth)*(max_depth-water_depth); // 
+	  // B_ps = max_bmass*(water_depth-min_depth)*(max_depth-water_depth); // 
   //New biomass function from NEB:
 	a = -4 * max_bmass / (depth_range * depth_range);
 	B_ps = a * (water_depth - min_depth) * (water_depth - max_depth);
+	}
 
-  //cout << "Line 698 min_depth: " << min_depth << " B_ps: " << B_ps << endl;
   return B_ps;
  }
+
 
 string itoa(int num)
 {
