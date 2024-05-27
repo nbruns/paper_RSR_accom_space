@@ -1282,6 +1282,10 @@ double get_peak_biomass(double surface_elevation, double MHT,
 /********************************************************
 // this returns the peak biomass is g/m^2
 ******************************************************/
+// NEB, 2024-5-16: this function was here but not used
+ 	// it does not return 0 as exepcted due to syntax errors
+ 	// fixed with proper "else" statement braces and care
+ 	// with return statement
 double get_peak_biomass_parab(double surface_elevation, double MHT,
 		   double max_depth, double min_depth, double max_bmass)
 {
