@@ -8,11 +8,34 @@ editor_options:
   chunk_output_type: console
 ---
 
+
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 library(readr)
+library(tidyverse)
+library(patchwork)
 dir_name_c_model <- "~/projects/marsh_column_model-master/"
 dir_name_r_project <- "~/projects/paper_RSR_accom_space/"
+
+
+#set theme
+theme_paper_ready <- function(base_size = 14, base_family = "",axis_size_adjust=2) {
+  theme_classic(base_size = base_size, base_family = base_family) +
+    theme(
+      text = element_text(size = base_size),
+      axis.title = element_text(size = base_size + axis_size_adjust),
+      axis.text = element_text(size = base_size),
+      legend.position = "right",
+      legend.title = element_text(size = base_size),
+      legend.text = element_text(size = base_size - 2),
+      plot.title = element_text(size = base_size + 4, face = "bold"),
+      plot.subtitle = element_text(size = base_size)
+    )
+}
+
+# Set the custom theme as the default
+theme_set(theme_paper_ready())
+
 ```
 
 ```{r load-data}
@@ -271,22 +294,25 @@ fig_2_tibble %>%
 ```{r fig-2-delta-C-ALT-VIEW}
 fig_2_tibble %>% 
   # filter(SLR %in% )
+  filter(SLR !=.003) %>% 
+  filter(delta_c_pcnt>-.5) %>% 
   filter(RSR %in% c(1,4)) %>% 
-  ggplot(aes(x = sed_conc, y = delta_c_pcnt, color = as.factor(SLR), group = interaction(SLR, RSR))) +
+  # ggplot(aes(x = sed_conc, y = delta_c_pcnt, color = as.factor(SLR), group = interaction(SLR, RSR))) +
+  ggplot(aes(x = sed_conc, y = delta_c_pcnt, color = SLR, group = interaction(SLR, RSR))) +
   geom_point() +
   geom_line() +
   geom_hline(yintercept = 0) +
   # labs(color = "Sed. Conc. (mg/L)") +  # Optionally add a label for the legend
   labs(color = "SLR (m/yr)") +  # Optionally add a label for the legend
-  scale_color_brewer(palette = "Set1")
+  # scale_color_brewer(palette = "Set1")
+  scale_color_viridis_c()
 
 ```
 
-
-
-```{r fig-4-total-c-per-scenario-run-LOAD-DATA}
-dir_name_fig_4_results <- "scenario_runs_fig_4"
-run_dir_full_name<- paste0("../source_cpp_model/model_output/", run_dir_name,"/")
+```{r fig-3-threshold-SLR-LOAD-DATA}
+find_slr_results <- "equilibrium_get_drowning_slr" #"dev_out"
+run_dir_full_name<- paste0("../source_cpp_model/model_output/",
+                           find_slr_results,"/")
                        
 series_column_names_NO_ACRETION <-c("Yr", "MHT", "Elevation", "Biomass", 
                           "Silt", "Ref", "Lab","extra_column")
@@ -294,14 +320,108 @@ series_column_names_NO_ACRETION <-c("Yr", "MHT", "Elevation", "Biomass",
 
   # run_string_vec <- c("00","01","10","11")
   # run_string_vec <- c( "0.000", "0.001", "0.005", "0.050")
-  equilibrium_run_files <- list.files(run_dir_full_name)
+ 
+   sed_pattern <-  "conc_([0-9.]+)\\.txt"
+   rsr_pattern <- "RSR_([0-9.]+)\\_" # regex for extracting SLR rate
+ 
+   
+get_slr_tibble <- tibble()
+  for(cur_file_name in list.files(run_dir_full_name)){
+    # cur_file_name <- equilibrium_run_files[4] #run name
+    # slr_rate <- str_extract(cur_file_name, pattern) %>%  
+    cur_sed_conc <- str_extract(cur_file_name, sed_pattern) %>%
+      str_extract("[0-9]+\\.[0-9]+") %>% as.numeric()
+    print(cur_sed_conc)
+    
+    cur_rsr <-  str_extract(cur_file_name, rsr_pattern) %>%
+      str_extract("[0-9.]+")  %>%
+      as.numeric() 
+   
+    cur_data <- read_delim(
+      paste0(run_dir_full_name,cur_file_name),
+      delim = " ", 
+      col_names = series_column_names_NO_ACRETION,
+      trim_ws = TRUE) %>% 
+      select(-extra_column) %>% 
+      # mutate(Yr=Yr+2010) %>%
+        # filter(Yr>1980) %>%
+      mutate(sed_conc=cur_sed_conc,
+             # SLR=cur_SLR,
+             rsr=cur_rsr)
+    
+    cur_data <- cur_data %>% 
+        mutate(accretion_mm_yr=Elevation-lag(Elevation)) %>% 
+        mutate(accretion_mm_yr=accretion_mm_yr*1000) %>% 
+        mutate(silt_deposition_g_yr=Silt - lag(Silt)) %>% 
+        mutate(depth=MHT-Elevation) %>% 
+        mutate(total_C=Ref+Lab) %>% 
+        mutate(CAR_g_yr=total_C - lag(total_C))  %>% 
+        mutate(SLR=MHT-lag(MHT)) %>% 
+      mutate(SLR=round(SLR*1000)) %>% 
+      filter(Yr>10) 
+       
+    get_slr_tibble <- bind_rows(get_slr_tibble,cur_data) 
+  }
+ 
+  
+  glimpse(get_slr_tibble)
+  get_slr_tibble %>% 
+  select(rsr,SLR) %>% table()
+ 
+```
+
+```{r fig-3-threshold-SLR-MAKE-FIGURE}
+ 
+custom_palette <- viridisLite::viridis(4)
+custom_palette[4] <- "#D55E00"#"green"  # Change the color for factor level 4
+
+get_slr_tibble %>% 
+  filter(Yr == 200) %>% 
+  ggplot(aes(x = sed_conc, y = SLR, color = as.factor(rsr))) +
+  geom_point() +
+  geom_line() +
+  ylab("threshold SLR (mm/yr)") +
+  xlab("sediment concentration (mg/L)") +
+  scale_color_manual(values = custom_palette, name = "RSR") +
+  labs(title="the impact or root:shoot ratio on threshold SLR" ,
+  subtitle = "across sediment concentrations (mg/L)")
+ 
+  # ggplot(aes(x=sed_conc,y=SLR))
+```
+
+```{r fig-3-zoom-in-on-each}
+get_slr_tibble %>% 
+  filter(Yr==200) %>% 
+  mutate(sed_conc_mg_l=sed_conc*1000) %>% 
+  # ggplot(aes(x=sed_conc,y=SLR,color=as.factor(rsr))) +
+  ggplot(aes(x=rsr,y=SLR)) +
+  geom_point() +
+  facet_wrap(~sed_conc_mg_l,scales = "free_y",ncol=1) +
+  ylab("threshold SLR (mm/yr)") +
+  xlab("root:shoot") +
+  labs(title="the impact or root:shoot ratio on threshold SLR" ,
+  subtitle = "across sediment concentrations (mg/L)")
+ 
+```
+
+
+```{r fig-4-total-c-per-scenario-run-LOAD-DATA}
+dir_name_fig_4_results <- "scenario_runs_fig_4"
+run_dir_full_name<- paste0("../source_cpp_model/model_output/", dir_name_fig_4_results,"/")
+                       
+series_column_names_NO_ACRETION <-c("Yr", "MHT", "Elevation", "Biomass", 
+                          "Silt", "Ref", "Lab","extra_column")
+  
+
+  # run_string_vec <- c("00","01","10","11")
+  # run_string_vec <- c( "0.000", "0.001", "0.005", "0.050")
  
    sed_pattern <- "sed_([0-9.]+)\\.txt" # regex for extracting SLR rate
    rsr_pattern <- "D_mbm_([0-9.]+)\\_" # regex for extracting SLR rate
  
    
-  cur_result_tibble <- tibble()
-  for(cur_file_name in equilibrium_run_files){
+  fig_4_scenario_runs <- tibble()
+  for(cur_file_name in list.files(run_dir_full_name)){
     # cur_file_name <- equilibrium_run_files[4] #run name
     # slr_rate <- str_extract(cur_file_name, pattern) %>%  
     sed_conc <- str_extract(cur_file_name, sed_pattern) %>%  
@@ -309,12 +429,12 @@ series_column_names_NO_ACRETION <-c("Yr", "MHT", "Elevation", "Biomass",
       substr(1, nchar(.) - 1) %>%  
       as.numeric()
    
-    rsr <-  str_extract(cur_file_name, rsr_pattern) %>%
+    RSR <-  str_extract(cur_file_name, rsr_pattern) %>%
       str_extract("[0-9.]+")  %>% 
       substr(1, nchar(.) - 1) %>%  
       as.numeric()
    
-    print(rsr )
+    print(RSR)
     print(sed_conc)
     
     cur_data <- read_delim(
@@ -339,26 +459,145 @@ series_column_names_NO_ACRETION <-c("Yr", "MHT", "Elevation", "Biomass",
       pull(total_carbon)
    
     carbon_accumulation <- end_carbon - start_carbon 
-    cur_row <- tibble(carbon_accumulation,sed_conc,rsr)
-    cur_result_tibble <- bind_rows(cur_result_tibble,cur_row) 
+    cur_row <- tibble(carbon_accumulation,sed_conc,RSR)
+    fig_4_scenario_runs <- bind_rows(fig_4_scenario_runs,cur_row) 
   }
   
-  glimpse(cur_result_tibble)
+  glimpse(fig_4_scenario_runs)
 
 ```
 
 ```{r fig-4-total-c-per-scenario-run-MAKE-PLOT}
-low_rsr_result_tibble
+leaf_color <- "green"
+root_color <- "brown"
+theme_set(theme_paper_ready(axis_size_adjust = 0))
+# theme_set(theme_classic(base_size = 12))
+fig_4_scenario_runs_baseline <- fig_4_scenario_runs %>%
+# fig_4_scenario_runs %>% 
+  filter(RSR ==2) %>% 
+  glimpse()
 
-  cur_result_tibble %>% 
+fig_4_diff_data <- fig_4_scenario_runs %>%
+  filter(RSR %in% c(1,2,4)) %>% 
+  mutate(RSR=paste0("RSR_",RSR)) %>%
+  pivot_wider(names_from = RSR, values_from = carbon_accumulation) %>% 
+  mutate(pct_C_change_increase=(RSR_4-RSR_2)/RSR_2) %>% 
+  mutate(pct_c_change_decrease=(RSR_1-RSR_2)/RSR_2)
+
+left_panel_pct_difs <- fig_4_diff_data %>% 
+  pivot_longer(starts_with("pct_C_")) %>% 
+  ggplot(aes(x=sed_conc*1000,y=value*100,color=name)) +
+  geom_point() +
+  geom_line() +
+  geom_hline(yintercept = 0) +
+  ylab("% change in organic matter accumulation") +
+  xlab("sediment concentration (mg/L)") +
+  scale_color_manual(values=c(root_color,leaf_color)) +
+  theme(legend.position="none")
+  
+
+
+
+right_panel_absolute_numbers <- fig_4_scenario_runs %>% 
   mutate(sed_conc_mg=sed_conc*1000) %>% 
-    ggplot(aes(x=rsr,y=carbon_accumulation,group=sed_conc_mg,color=as.factor(sed_conc_mg)))+
+    ggplot(aes(x=RSR,y=carbon_accumulation,group=sed_conc_mg,color=as.factor(sed_conc_mg)))+
     geom_point() +
     geom_line() +
   scale_color_viridis_d( "sediment concentration (mg/L)") +
-  ylab("carbon accumulated (g)") +
-  xlab("root:shoot ratio") +
-  ggtitle("C accumulated during 100 year A2 scenario")
+  ylab("total organic matter accumulation (g)") +
+  xlab("root:shoot ratio")  +
+  geom_vline(xintercept = 1,color=leaf_color,linetype="dotted",size=2) +
+  geom_vline(xintercept = 2) +
+  geom_vline(xintercept = 4,color=root_color,linetype="dotted",size=2) 
+
+left_panel_pct_difs | right_panel_absolute_numbers
+```
+
+```{r fig-5-LOAD-DATA}
+
+dir_name_fig_4_results <- "scenario_runs_fig_4"
+run_dir_full_name<- paste0("../source_cpp_model/model_output/", dir_name_fig_4_results,"/")
+                       
+series_column_names_NO_ACRETION <-c("Yr", "MHT", "Elevation", "Biomass", 
+                          "Silt", "Ref", "Lab","extra_column")
+  
+
+  # run_string_vec <- c("00","01","10","11")
+  # run_string_vec <- c( "0.000", "0.001", "0.005", "0.050")
+ 
+   sed_pattern <- "sed_([0-9.]+)\\.txt" # regex for extracting SLR rate
+   rsr_pattern <- "D_mbm_([0-9.]+)\\_" # regex for extracting SLR rate
+ 
+  
+   fig_5_values_sed <- c(.005,.05) 
+   fig_5_values_rsr <- c(1,2,4)
+   
+  fig_5_tibble <- tibble()
+  for(cur_file_name in list.files(run_dir_full_name)){
+    # cur_file_name <- equilibrium_run_files[4] #run name
+    # slr_rate <- str_extract(cur_file_name, pattern) %>%  
+    sed_conc <- str_extract(cur_file_name, sed_pattern) %>%  
+      str_extract("[0-9.]+")  %>% 
+      substr(1, nchar(.) - 1) %>%  
+      as.numeric()
+   
+    RSR <-  str_extract(cur_file_name, rsr_pattern) %>%
+      str_extract("[0-9.]+")  %>% 
+      substr(1, nchar(.) - 1) %>%  
+      as.numeric()
+    
+     
+    print(RSR )
+    print(sed_conc)
+    if(sed_conc %in% fig_5_values_sed && RSR %in% fig_5_values_rsr){
+
+      cur_data <- read_delim(
+        paste0(run_dir_full_name,cur_file_name),
+        delim = " ", 
+        col_names = series_column_names_NO_ACRETION,
+        trim_ws = TRUE) %>% 
+        select(-extra_column) %>% 
+        # mutate(Yr=Yr+2010) %>%
+          # filter(Yr>1980) %>%
+        mutate(sed_conc=sed_conc) %>% 
+        mutate(RSR=RSR)
+      
+      #calculate additional fields 
+      cur_data <- cur_data %>% 
+        mutate(total_carbon=Lab+Ref) %>% 
+        mutate(CAR_g_yr=total_carbon - lag(total_carbon)) %>% 
+        mutate(accretion_mm_yr=Elevation-lag(Elevation)) %>% 
+        mutate(accretion_mm_yr=accretion_mm_yr*1000) 
+      
+      fig_5_tibble <- bind_rows(fig_5_tibble,cur_data) 
+    }
+  }
+  
+  glimpse(fig_5_tibble)
+
+```
+
+```{r  fig-5-MAKE-FIGURE}
+theme_set(theme_paper_ready(axis_size_adjust = -3))
+
+top_row_OM_acum <- fig_5_tibble %>% 
+  mutate(RSR=as.factor(RSR)) %>% 
+  filter(Yr>80) %>% 
+  ggplot(aes(x=Yr,y=CAR_g_yr,color=RSR,group=RSR)) + 
+  geom_line() +
+  facet_wrap(~sed_conc,scales="free_y") +
+  ylab("organic matter accumulation (g m^-1 yr^-1)")
+
+bottom_row_accretion <- fig_5_tibble %>% 
+  mutate(RSR=as.factor(RSR)) %>% 
+  filter(Yr>80) %>% 
+  ggplot(aes(x=Yr,y=accretion_mm_yr,color=RSR,group=RSR)) + 
+  geom_line() +
+  # facet_wrap(~sed_conc,scales="free_y") + 
+  facet_wrap(~sed_conc) + 
+  ylab("Accretion rate (mm yr^-1)")
+
+top_row_OM_acum / bottom_row_accretion + plot_layout(guides = 'collect')
 
 ```
 
