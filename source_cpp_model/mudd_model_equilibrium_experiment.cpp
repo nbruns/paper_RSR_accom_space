@@ -170,19 +170,19 @@ int main()
 	// previously and runs again#
 	double inital_SLR=.011;
 	// double inital_SLR=0.02;
-	double SLR_increase = 0.001;
+	double SLR_increase = 0.0005//0.001;
 
-	// const int s_count= 6;
-	// double sed_conc_array[s_count] ={.005,.01,.02,.03,.04,.05}; // for S2: 1, 5, and 50 mg/L
+	const int s_count= 6;
+	double sed_conc_array[s_count] ={.005,.01,.02,.03,.04,.05}; // for S2: 1, 5, and 50 mg/L
 	// const int s_count= 2;
 	// double sed_conc_array[s_count] ={.005,.05}; // for S2: 1, 5, and 50 mg/L
-	const int s_count= 3;
-	double sed_conc_array[s_count] ={.005,.01,.02}; // for S2: 1, 5, and 50 mg/L
+	// const int s_count= 3;
+	// double sed_conc_array[s_count] ={.005,.01,.02}; // for S2: 1, 5, and 50 mg/L
 	// const int a_count=1;
 	// double d_mbm_array[a_count]={2};
-	const int a_count=3;
-	double d_mbm_array[a_count]={1,2,4};
-	// double d_mbm_array[a_count]={1,2,3,4};
+	const int a_count=4;
+	// double d_mbm_array[a_count]={1,2,4};
+	double d_mbm_array[a_count]={1,2,3,4};
 	double D_mbm_arg; //NEB addition
 	for(int s=0;s<s_count;s++){
 		for(int a=0;a<a_count;a++){
@@ -208,11 +208,10 @@ int main()
 
 				// SLR = slr_array[r];
 				cout << endl << " fname: " << fname << endl
-					 << "theta_gamma_roots: " << root_efold << endl
-					 << "effective s vel: " << effective_svel << endl
-					 << "labile frac: " << labile_frac << endl
 					 << "SLR is: " << SLR << endl
 					 << "tot_conc is: " << conc_silt << endl
+					 << "RSR is: " << D_mbm_arg << endl
+					 << "initial SLR is: " << inital_SLR << endl
 					 << "tidal amplitude is: " << tA << endl;
 
 
@@ -237,22 +236,9 @@ int main()
 				cout << "\nruntime was: " << dif << " seconds\n";
 				col_out.close();
 
-				// cout << "\nfinal depth: " << final_Depth << endl;
-			// //below is all vestigal code, should be deleted
-			// 	if (final_Depth  < D_max)			// we want SLR to go up when eq depth is approached, as long as plants remain. Stop everything when plants die.
-			// 	{
-			// 		old_SLR = SLR;
-			// 	}
-			// 	else
-			// 	{
-			// 		cout << "Plants died at SLR = " << SLR << " m/yr" << endl;
-			// 		//SLR_increase = SLR_increase/2;
-			// 		SLR_increase=0;
-			// 	}
-			// //end vestigal code
-
 			}
 		}
+		inital_SLR=SLR; //experimental optimization
 
 	}
 
@@ -368,7 +354,7 @@ double column_model(double RSLR, double kfactor, double bfactor, double tA, doub
 	int ab_pointer_sz;
 
 	// int end_year = 300;				// the final year	
-	int end_year = 200;				// the final year	
+	int end_year = 400;//200;				// the final year	
 							// if you change this, check line 631
 							//int runup=end_year-100;
 						//MK- I changed this from 1500 to 10000
@@ -977,7 +963,7 @@ double column_model(double RSLR, double kfactor, double bfactor, double tA, doub
    	// MK- New function to save time series data
 	ofstream series_out;
 	//all below is NEB hack for clean runs
-	string run_name = "dev_out";//"equilibrium_get_drowning_slr"; //"equilibrium_runs";//"test_run_dir"; // This probably aught to be a parm passed in at runtime
+	string run_name = "equilibrium_get_drowning_slr"; //"equilibrium_runs";//"test_run_dir"; // This probably aught to be a parm passed in at runtime
 	string output_dir="model_output/" + run_name + "/";
 	string fname2_prefix= output_dir + "threshold.slr"; //NEB hack 
 	// string fname2_prefix="series."; //NEB hack 
