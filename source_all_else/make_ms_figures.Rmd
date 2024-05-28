@@ -36,6 +36,14 @@ theme_paper_ready <- function(base_size = 14, base_family = "",axis_size_adjust=
 # Set the custom theme as the default
 theme_set(theme_paper_ready())
 
+COLOR_SED_LOW <- "#D3D3D3"# "lightgrey"
+COLOR_SED_HIGH <- "#696969"#"darkgrey"
+SED_CONC_LOW <- .005
+# SED_CONC_HIGH <- .05
+SED_CONC_HIGH <- .03
+
+RSR_LOW <- 1
+RSR_HIGH <- 4
 ```
 
 ```{r load-data}
@@ -76,11 +84,11 @@ all_runs %>% glimpse()
 
 ```{r reproduce-k-mud-fig-3}
 
-scenario_plot_CAR <- 
+# scenario_plot_CAR <- 
   
-scenario_plot_accretion <-
+# scenario_plot_accretion <-
   
-scenario_plot_CAR | scenario_plot_accretion
+# scenario_plot_CAR | scenario_plot_accretion
   
 ```
 
@@ -134,7 +142,7 @@ RSR_adjust_tibble <- tibble()
         # filter(Yr>1980) %>%
       mutate(sed_conc=cur_sed_conc,
              SLR=cur_SLR,
-             rsr=cur_rsr)
+             RSR=cur_rsr)
     
     cur_data <- cur_data %>% 
         mutate(accretion_mm_yr=Elevation-lag(Elevation)) %>% 
@@ -150,26 +158,30 @@ RSR_adjust_tibble <- tibble()
   
   glimpse(RSR_adjust_tibble)
 
-  RSR_adjust_tibble %>% pull(rsr) %>% table()
+  RSR_adjust_tibble %>% pull(RSR) %>% table()
+  RSR_adjust_tibble %>% pull(sed_conc) %>% table()
 ```
-```{r fig-1-rsr-adjust-MAKE-PLOT}
+
+```{r fig-1-rsr-adjust-MAKE-PLOT-FULL}
 # recquires RSR_adjust_tibble
+
+
 fig_1_make_plot <- function(results_tibble_arg,slr_arg){
   
   low_sed <- results_tibble_arg %>% 
     # filter(rsr %in% c(1,3)) %>% 
-    filter(rsr %in% c(1,4)) %>% 
-    filter(sed_conc==.005) %>% 
+    filter(RSR %in% c(RSR_LOW,RSR_HIGH)) %>% 
+    filter(sed_conc==SED_CONC_LOW) %>% 
     
     select(
      Yr,sed_conc,SLR,
-     rsr,
+     RSR,
      accretion_mm_yr,CAR_g_yr,Biomass,depth,silt_deposition_g_yr
     ) %>% 
     filter(Yr>50) %>% 
     filter(SLR==slr_arg) %>% 
-    pivot_longer(-c(Yr,sed_conc,SLR,rsr)) %>% 
-    ggplot(aes(x=Yr,y=value,group=as.factor(rsr),color=as.factor(rsr))) +
+    pivot_longer(-c(Yr,sed_conc,SLR,RSR)) %>% 
+    ggplot(aes(x=Yr,y=value,group=as.factor(RSR),color=as.factor(RSR))) +
     geom_line() +
     # facet_grid(name~sed_conc,scales = "free_y") +
     facet_wrap(~name,scales = "free_y",ncol=1) +
@@ -181,23 +193,23 @@ fig_1_make_plot <- function(results_tibble_arg,slr_arg){
    
   high_sed <- results_tibble_arg %>% 
       # filter(rsr %in% c(1,3)) %>% 
-      filter(rsr %in% c(1,4)) %>% 
-    filter(sed_conc==.05) %>% 
+      filter(RSR %in% c(RSR_LOW,RSR_HIGH)) %>% 
+    filter(sed_conc==SED_CONC_HIGH) %>% 
     select(
      Yr,sed_conc,SLR,
-     rsr,
+     RSR,
      accretion_mm_yr,CAR_g_yr,Biomass,depth,silt_deposition_g_yr
     ) %>% 
     filter(Yr>50) %>% 
     filter(SLR==slr_arg) %>% 
-    pivot_longer(-c(Yr,sed_conc,SLR,rsr)) %>% 
-    ggplot(aes(x=Yr,y=value,group=as.factor(rsr),color=as.factor(rsr))) +
+    pivot_longer(-c(Yr,sed_conc,SLR,RSR)) %>% 
+    ggplot(aes(x=Yr,y=value,group=as.factor(RSR),color=as.factor(RSR))) +
     geom_line() +
     # facet_grid(name~sed_conc,scales = "free_y") +
     facet_wrap(~name,scales = "free_y",ncol=1) +
     scale_color_manual(values= c("darkgreen","brown"),"root:shoot ratio") +
     ylab(NULL)+
-    ggtitle(paste0("SLR: ",slr_arg,", sed: 50 mg/L")) 
+    ggtitle(paste0("SLR: ",slr_arg,", sed: ",SED_CONC_HIGH*1000, "mg/L")) 
     # ggplot(aes(x=Yr,y=))
    (low_sed  | high_sed) + plot_layout(guides = 'collect')
    
@@ -205,11 +217,77 @@ fig_1_make_plot <- function(results_tibble_arg,slr_arg){
 
 
 # fig_1_make_plot (RSR_adjust_tibble,.003) 
-fig_1_make_plot (RSR_adjust_tibble,.01) 
+fig_1_make_plot (RSR_adjust_tibble,.01)  # .0125 is interesting-- as pct car on decrease is same
 # fig_1_make_plot (RSR_adjust_tibble,.001) 
  
  
 ```
+
+
+```{r fig-1-rsr-adjust-MAKE-PLOT-SIMPLE}
+# recquires RSR_adjust_tibble
+
+rsr_adjust_plot_ACCRETION <- function(results_tibble,slr_arg,sed_conc_arg){
+  results_tibble %>% 
+    filter(RSR %in% c(RSR_LOW,2,RSR_HIGH)) %>% 
+    filter(sed_conc==sed_conc_arg) %>% 
+    filter(Yr>50) %>% 
+    filter(SLR==slr_arg) %>% 
+    ggplot(aes(x=Yr,y=accretion_mm_yr,group=as.factor(RSR),color=as.factor(RSR))) +
+    geom_line() +
+    geom_line(data = . %>% filter(Yr<100),color="black") +
+    # scale_color_manual(values= c("darkgreen","black","brown"),"root:shoot ratio") +
+    scale_color_manual(values= c("darkgreen","black","brown"),"root:shoot ratio") +
+    ggtitle(paste0("SLR: ",slr_arg,", sed: ",sed_conc_arg ,"mg/L")) +
+    ylab("accretion rate (mm/yr)")
+}
+
+ rsr_adjust_plot_CAR <- function(results_tibble,slr_arg,sed_conc_arg){
+                           
+  results_tibble %>% 
+    filter(RSR %in% c(RSR_LOW,2,RSR_HIGH)) %>% 
+    filter(sed_conc==sed_conc_arg) %>% 
+    filter(Yr>50) %>% 
+    filter(SLR==slr_arg) %>% 
+    ggplot(aes(x=Yr,y=CAR_g_yr,group=as.factor(RSR),color=as.factor(RSR))) +
+    geom_line() +
+    geom_line(data = . %>% filter(Yr<100),color="black") +
+    # scale_color_manual(values= c("darkgreen","black","brown"),"root:shoot ratio") +
+    scale_color_manual(values= c("darkgreen","black","brown"),"root:shoot ratio") +
+    # ggtitle(paste0("SLR: ",slr_arg,", sed: 5 mg/L")) +
+    ylab("organic matter accumulation (g/yr)")
+}
+
+make_fig_1_SIMPLE <- function(slr_arg){
+  
+    
+  CAR_sed_low <- rsr_adjust_plot_CAR(results_tibble = RSR_adjust_tibble,
+                                     slr_arg =  slr_arg,
+                                     sed_conc_arg =  SED_CONC_LOW)
+  
+   CAR_sed_high <- rsr_adjust_plot_CAR(results_tibble = RSR_adjust_tibble,
+                                     slr_arg =  slr_arg,
+                                     sed_conc_arg =  SED_CONC_HIGH)
+  
+   ACC_sed_low <- rsr_adjust_plot_ACCRETION(results_tibble = RSR_adjust_tibble,
+                                     slr_arg =  slr_arg,
+                                     sed_conc_arg =  SED_CONC_LOW)
+  
+   ACC_sed_high <- rsr_adjust_plot_ACCRETION(results_tibble = RSR_adjust_tibble,
+                                     slr_arg =  slr_arg,
+                                     sed_conc_arg =  SED_CONC_HIGH)
+  
+    
+     (ACC_sed_low | ACC_sed_high)/ 
+    (CAR_sed_low | CAR_sed_high)  +
+     plot_layout(guides = 'collect')
+   
+}
+
+make_fig_1_SIMPLE(.01)
+```
+
+
 
 ```{r fig-2-delta-C-MAKE-DATA}
 #could load these 1 at a time and make table, so I could sweep a larger set
@@ -278,15 +356,29 @@ fig_2_tibble %>% glimpse()
 ```
 
 ```{r fig-2-delta-C-MAKE-PLOT}
-   
+
 fig_2_tibble %>% 
-  filter(RSR %in% c(1,4)) %>% 
-  ggplot(aes(x = SLR, y = delta_c_pcnt, color = as.factor(sed_conc*1000), group = interaction(sed_conc, RSR))) +
+  pull(SLR) %>% 
+  unique()
+
+slr_vec <- c(.001,.0025,.0050,.0075,.01,.0125,.015,.2)
+fig_2_tibble %>% 
+  filter(SLR %in% slr_vec)   %>% 
+  filter(RSR %in% c(RSR_LOW,RSR_HIGH)) %>% 
+  filter(sed_conc %in% c(SED_CONC_LOW,SED_CONC_HIGH)) %>%
+  filter(!(sed_conc == SED_CONC_LOW & SLR >= 0.015)) %>%  # Additional filter condition
+  mutate(SLR_mm_yr =SLR*1000) %>% 
+  mutate(sed_conc_mg_l=sed_conc*1000) %>% 
+  ggplot(aes(x = SLR_mm_yr, y = delta_c_pcnt, color = as.factor(sed_conc_mg_l), group = interaction(sed_conc_mg_l, RSR))) +
   geom_point() +
   geom_line() +
   geom_hline(yintercept = 0) +
   labs(color = "Sed. Conc. (mg/L)") +  # Optionally add a label for the legend
-  scale_color_brewer(palette = "Set1")
+  # scale_color_brewer(palette = "Set1") +
+  scale_color_manual(values = c(COLOR_SED_LOW,COLOR_SED_HIGH)) +
+  ylab("% change in organic matter accumulation rate") +
+  xlab("sea level rise rate (mm/yr)") +
+  theme_classic()
 
 
 ```
@@ -296,7 +388,7 @@ fig_2_tibble %>%
   # filter(SLR %in% )
   filter(SLR !=.003) %>% 
   filter(delta_c_pcnt>-.5) %>% 
-  filter(RSR %in% c(1,4)) %>% 
+  filter(RSR %in% c(RSR_LOW,RSR_HIGH)) %>% 
   # ggplot(aes(x = sed_conc, y = delta_c_pcnt, color = as.factor(SLR), group = interaction(SLR, RSR))) +
   ggplot(aes(x = sed_conc, y = delta_c_pcnt, color = SLR, group = interaction(SLR, RSR))) +
   geom_point() +
@@ -529,7 +621,7 @@ series_column_names_NO_ACRETION <-c("Yr", "MHT", "Elevation", "Biomass",
    rsr_pattern <- "D_mbm_([0-9.]+)\\_" # regex for extracting SLR rate
  
   
-   fig_5_values_sed <- c(.005,.05) 
+   fig_5_values_sed <- c(SED_CONC_LOW,SED_CONC_HIGH) 
    fig_5_values_rsr <- c(1,2,4)
    
   fig_5_tibble <- tibble()
@@ -564,6 +656,7 @@ series_column_names_NO_ACRETION <-c("Yr", "MHT", "Elevation", "Biomass",
       
       #calculate additional fields 
       cur_data <- cur_data %>% 
+        mutate(sed_conc_mg_l=sed_conc*1000) %>% 
         mutate(total_carbon=Lab+Ref) %>% 
         mutate(CAR_g_yr=total_carbon - lag(total_carbon)) %>% 
         mutate(accretion_mm_yr=Elevation-lag(Elevation)) %>% 
@@ -585,7 +678,7 @@ top_row_OM_acum <- fig_5_tibble %>%
   filter(Yr>80) %>% 
   ggplot(aes(x=Yr,y=CAR_g_yr,color=RSR,group=RSR)) + 
   geom_line() +
-  facet_wrap(~sed_conc,scales="free_y") +
+  facet_wrap(~sed_conc_mg_l,scales="free_y") +
   ylab("organic matter accumulation (g m^-1 yr^-1)")
 
 bottom_row_accretion <- fig_5_tibble %>% 
@@ -594,7 +687,7 @@ bottom_row_accretion <- fig_5_tibble %>%
   ggplot(aes(x=Yr,y=accretion_mm_yr,color=RSR,group=RSR)) + 
   geom_line() +
   # facet_wrap(~sed_conc,scales="free_y") + 
-  facet_wrap(~sed_conc) + 
+  facet_wrap(~sed_conc_mg_l) + 
   ylab("Accretion rate (mm yr^-1)")
 
 top_row_OM_acum / bottom_row_accretion + plot_layout(guides = 'collect')
