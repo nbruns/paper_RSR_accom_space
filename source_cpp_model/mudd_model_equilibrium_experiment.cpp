@@ -129,6 +129,7 @@ int main()
 	double effective_svel;
 	double tA;				// the tidal amplitude
 	double peak_Bmass = 1;		// this is returned from the model loop 
+	double drowning_flag = 1; 		//now this is returned from model loop! should be int, but double because so is peak_Bmass
 	
 
 	string s_temp;
@@ -170,7 +171,7 @@ int main()
 	// previously and runs again#
 	double inital_SLR=.011;
 	// double inital_SLR=0.02;
-	double SLR_increase = 0.0005//0.001;
+	double SLR_increase = 0.0005;//0.001;
 
 	const int s_count= 6;
 	double sed_conc_array[s_count] ={.005,.01,.02,.03,.04,.05}; // for S2: 1, 5, and 50 mg/L
@@ -202,8 +203,11 @@ int main()
 			kfactor=0;
 			bfactor=0;
 			SLR = inital_SLR;
-			peak_Bmass = 1; //reinitialize loop condition
-			while(peak_Bmass > 0){
+			// peak_Bmass = 1; //reinitialize loop condition
+			// while(peak_Bmass > 0){
+			drowning_flag = 1; //reinitialize loop condition
+			while(drowning_flag > 0){
+				
 				SLR= SLR + SLR_increase;
 
 				// SLR = slr_array[r];
@@ -224,7 +228,9 @@ int main()
 
 
 				time (&start);				// get starting time
-				peak_Bmass = column_model(SLR,kfactor, bfactor, tA,conc_silt,conc_fs,
+				// peak_Bmass = column_model(SLR,kfactor, bfactor, tA,conc_silt,conc_fs,
+				// 1 if not drowning, -1 if drowning or drowned
+				drowning_flag = column_model(SLR,kfactor, bfactor, tA,conc_silt,conc_fs,
 				// final_Depth = column_model(SLR,kfactor, bfactor, tA,conc_silt,conc_fs,
 						   labile_frac, refrac_frac,
 						   root_efold, effective_svel, start_depth_frac,
@@ -963,7 +969,7 @@ double column_model(double RSLR, double kfactor, double bfactor, double tA, doub
    	// MK- New function to save time series data
 	ofstream series_out;
 	//all below is NEB hack for clean runs
-	string run_name = "equilibrium_get_drowning_slr"; //"equilibrium_runs";//"test_run_dir"; // This probably aught to be a parm passed in at runtime
+	string run_name = "equilibrium_get_drowning_slr_effecient_search"; //"equilibrium_runs";//"test_run_dir"; // This probably aught to be a parm passed in at runtime
 	string output_dir="model_output/" + run_name + "/";
 	string fname2_prefix= output_dir + "threshold.slr"; //NEB hack 
 	// string fname2_prefix="series."; //NEB hack 
@@ -1013,13 +1019,36 @@ double column_model(double RSLR, double kfactor, double bfactor, double tA, doub
 	//filename code: 00= no enhanced decay or productivity, 10= enhanced decay only, 01=enhanced prod only, 11=enhanced decay and productivity,
 	////////////////////
 
-double final_MHT = TimeSeries_MHT.back();
-double final_Elevation = TimeSeries_Elevation.back();
-double final_Depth = final_MHT - final_Elevation;
+	double final_MHT = TimeSeries_MHT.back();
+	double final_Elevation = TimeSeries_Elevation.back();
+	double final_Depth = final_MHT - final_Elevation;
 
-// return final_Depth;
-return peak_Bmass; //NEB replaced return value for detecting threshold SLR
+	// return final_Depth;
+	// return peak_Bmass; //NEB replaced return value for detecting threshold SLR
 
+
+    // new logic for effecient drowning calculation: 
+	// instead of returning peak biomass, return -1 if 
+		// - biomass is 0
+		// - the last 3 accretion values are all decreasing, suggesting it is amidst drowning
+		// - 
+
+	bool condition1 = (TimeSeries_Biomass.back() == 0);
+	bool condition2 = false;
+
+	if (TimeSeries_Accretion.size() >= 3) {
+	    int n = TimeSeries_Accretion.size();
+	    condition2 = (TimeSeries_Accretion[n - 1] < TimeSeries_Accretion[n - 2] &&
+	                  TimeSeries_Accretion[n - 2] < TimeSeries_Accretion[n - 3] &&
+	                  TimeSeries_Accretion[n - 3] < TimeSeries_Accretion[n - 4]);
+	}
+
+
+	if (condition1 || condition2) {
+		return -1;
+	} else {
+		return 1;
+	}
 
 
 }
