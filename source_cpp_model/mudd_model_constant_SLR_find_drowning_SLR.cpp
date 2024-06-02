@@ -79,8 +79,12 @@ double get_slope(double aa, double bb, double alpha_turb, double alpha_zero,
 double get_peak_biomass(double surface_elevation, double MHT,
 		   double max_depth, double min_depth, double max_bmass, double temperatureincrease, int yr, double boriginal, double bfactor);
 
-double get_peak_biomass_parab(double surface_elevation, double MHT,
-		   double max_depth, double min_depth, double max_bmass);
+double get_peak_biomass_parab_fixed_productivity(double surface_elevation, double MHT,
+		   double max_depth, double min_depth, 
+		    double peak_total_productivity,double D_mbm_arg); //new arguements so productivity does not change across root:shoot values
+
+
+
 
 // this gets the biomass growth and mortality for a given time of year
 vector<double> biomass_and_mortality(double day, double peak_biomass, double min_biomass,
@@ -96,7 +100,7 @@ double column_model(double RSLR, double kfactor, double bfactor, double tA, doub
 				  double labile_frac, double refrac_frac,
 				  double theta_root_efold, double effective_svel, double starting_depth_frac,
 				  ofstream& data_out, ofstream& col_out,
-				  double theta_bm_arg, double D_mbm_arg);
+				  double theta_bm_arg, double D_mbm_arg, double peak_productivity_arg);
 
 // a utility function used to convert integers to strings
 string itoa(int num);
@@ -130,6 +134,7 @@ int main()
 	double tA;				// the tidal amplitude
 	double peak_Bmass = 1;		// this is returned from the model loop 
 	double drowning_flag = 1; 		//now this is returned from model loop! should be int, but double because so is peak_Bmass
+	double peak_productivity=7500;
 	
 
 	string s_temp;
@@ -169,12 +174,12 @@ int main()
 	// if the biomass is 0, then the model has overshot
 	// so the model increases the SLR by half the value it increased
 	// previously and runs again#
-	double inital_SLR=.011;
+	double inital_SLR=.004;
 	// double inital_SLR=0.02;
 	double SLR_increase = 0.0005;//0.001;
 
-	const int s_count= 6;
-	double sed_conc_array[s_count] ={.005,.01,.02,.03,.04,.05}; // for S2: 1, 5, and 50 mg/L
+	const int s_count= 7;
+	double sed_conc_array[s_count] ={0,.005,.01,.02,.03,.04,.05}; // for S2: 1, 5, and 50 mg/L
 	// const int s_count= 2;
 	// double sed_conc_array[s_count] ={.005,.05}; // for S2: 1, 5, and 50 mg/L
 	// const int s_count= 3;
@@ -203,10 +208,10 @@ int main()
 			kfactor=0;
 			bfactor=0;
 			SLR = inital_SLR;
-			// peak_Bmass = 1; //reinitialize loop condition
-			// while(peak_Bmass > 0){
-			drowning_flag = 1; //reinitialize loop condition
-			while(drowning_flag > 0){
+			peak_Bmass = 1; //reinitialize loop condition
+			while(peak_Bmass > 0){
+			// drowning_flag = 1; //reinitialize loop condition
+			// while(drowning_flag > 0){
 				
 				SLR= SLR + SLR_increase;
 
@@ -228,15 +233,16 @@ int main()
 
 
 				time (&start);				// get starting time
-				// peak_Bmass = column_model(SLR,kfactor, bfactor, tA,conc_silt,conc_fs,
+				peak_Bmass = column_model(SLR,kfactor, bfactor, tA,conc_silt,conc_fs,
 				// 1 if not drowning, -1 if drowning or drowned
-				drowning_flag = column_model(SLR,kfactor, bfactor, tA,conc_silt,conc_fs,
+				// drowning_flag = column_model(SLR,kfactor, bfactor, tA,conc_silt,conc_fs,
 				// final_Depth = column_model(SLR,kfactor, bfactor, tA,conc_silt,conc_fs,
 						   labile_frac, refrac_frac,
 						   root_efold, effective_svel, start_depth_frac,
 						   data_out, col_out,
 						   theta_bm_arg,
-						   D_mbm_arg);
+						   D_mbm_arg,
+						   peak_productivity);
 				time (&end);					// get ending time
 				dif = difftime (end,start);
 				cout << "\nruntime was: " << dif << " seconds\n";
@@ -264,7 +270,8 @@ double column_model(double RSLR, double kfactor, double bfactor, double tA, doub
 				  double theta_root_efold, double effective_svel, double start_depth_frac,
 				  ofstream& data_out, ofstream& col_out,
 				  double theta_bm_arg, //NEB addition
-				  double D_mbm_arg //NEB addition
+				  double D_mbm_arg, //NEB addition
+				  double peak_productivity_arg
 				  )
 {
 
@@ -686,9 +693,14 @@ double column_model(double RSLR, double kfactor, double bfactor, double tA, doub
 		// peak_Bmass =  get_peak_biomass(marsh_surface_elevation, MHT,
 		   //max_depth, min_depth, max_bmass,temperatureincrease,yr,boriginal,bfactor);	//MK- I added temperature,yr,boriginal to this line
 
-
-		peak_Bmass =  get_peak_biomass_parab(marsh_surface_elevation, MHT,
-		   max_depth, min_depth, max_bmass);
+               	// replace with parabola that keeps produtivity fixed^
+		// peak_Bmass =  get_peak_biomass_parab(marsh_surface_elevation, MHT,
+		//    max_depth, min_depth, max_bmass);
+		
+		peak_Bmass =  get_peak_biomass_parab_fixed_productivity(
+			marsh_surface_elevation, MHT, max_depth, min_depth, 
+			peak_productivity_arg,D_mbm);
+		
 		
 
 		if (yr==1) // MK- I added these 2 lines
@@ -969,7 +981,7 @@ double column_model(double RSLR, double kfactor, double bfactor, double tA, doub
    	// MK- New function to save time series data
 	ofstream series_out;
 	//all below is NEB hack for clean runs
-	string run_name = "equilibrium_get_drowning_slr_effecient_search"; //"equilibrium_runs";//"test_run_dir"; // This probably aught to be a parm passed in at runtime
+	string run_name = "equilibrium_get_drowning_high_res_FIXED_PRODUCTIVITY"; //"equilibrium_runs";//"test_run_dir"; // This probably aught to be a parm passed in at runtime
 	string output_dir="model_output/" + run_name + "/";
 	string fname2_prefix= output_dir + "threshold.slr"; //NEB hack 
 	// string fname2_prefix="series."; //NEB hack 
@@ -1024,7 +1036,7 @@ double column_model(double RSLR, double kfactor, double bfactor, double tA, doub
 	double final_Depth = final_MHT - final_Elevation;
 
 	// return final_Depth;
-	// return peak_Bmass; //NEB replaced return value for detecting threshold SLR
+	return peak_Bmass; //NEB replaced return value for detecting threshold SLR
 
 
     // new logic for effecient drowning calculation: 
@@ -1033,24 +1045,26 @@ double column_model(double RSLR, double kfactor, double bfactor, double tA, doub
 		// - the last 3 accretion values are all decreasing, suggesting it is amidst drowning
 		// - 
 
-	bool condition1 = (TimeSeries_Biomass.back() == 0);
-	bool condition2 = false;
 
-	if (TimeSeries_Accretion.size() >= 3) {
-	    int n = TimeSeries_Accretion.size();
-	    condition2 = (TimeSeries_Accretion[n - 1] < TimeSeries_Accretion[n - 2] &&
-	                  TimeSeries_Accretion[n - 2] < TimeSeries_Accretion[n - 3] &&
-	                  TimeSeries_Accretion[n - 3] < TimeSeries_Accretion[n - 4]);
-	}
+	// bool condition1 = (TimeSeries_Biomass.back() == 0);
+	// bool condition2 = false;
 
-
-	if (condition1 || condition2) {
-		return -1;
-	} else {
-		return 1;
-	}
+	// if (TimeSeries_Accretion.size() >= 3) {
+	//     int n = TimeSeries_Accretion.size();
+	//     condition2 = (TimeSeries_Accretion[n - 1] < TimeSeries_Accretion[n - 2] &&
+	//                   TimeSeries_Accretion[n - 2] < TimeSeries_Accretion[n - 3] &&
+	//                   TimeSeries_Accretion[n - 3] < TimeSeries_Accretion[n - 4]);
+	// }
 
 
+	// if (condition1 || condition2) {
+	// 	return -1;
+	// } else {
+	// 	return 1;
+	// }
+
+
+   // end new logic for effecient non drowning
 }
 
 /********************************************************
@@ -1410,6 +1424,45 @@ double get_peak_biomass_parab(double surface_elevation, double MHT,
 
   return B_ps;
  }
+
+
+
+ /********************************************************
+ // new from NEB, 2024-6-1
+ //	now, across RSR values (D_mbm_arg), total producivity is fixed
+ // this returns the peak biomass is g/m^2
+ ******************************************************/
+ double get_peak_biomass_parab_fixed_productivity(double surface_elevation, double MHT,
+ 		   double max_depth, double min_depth, 
+ 		   double peak_total_productivity,double D_mbm_arg)
+ {
+   double depth_range = max_depth-min_depth;
+   double water_depth = MHT-surface_elevation;
+   double B_ps;
+   double a;
+   double max_bmass_RSR_adjusted;
+
+
+   if (water_depth > max_depth || water_depth < min_depth){
+ 	  B_ps = 0;
+ 	} else {
+
+ 	//
+
+  max_bmass_RSR_adjusted= peak_total_productivity / (1 + D_mbm_arg);
+  // Below is the inhereited parabola function, which is not quite right-- 	
+  	//the max biomass is too low
+ 	  // B_ps = max_bmass*(water_depth-min_depth)*(max_depth-water_depth); // 
+   //New biomass function from NEB:
+ 	a = -4 * max_bmass_RSR_adjusted / (depth_range * depth_range);
+ 	B_ps = a * (water_depth - min_depth) * (water_depth - max_depth);
+ 	}
+
+   return B_ps;
+  }
+
+
+
 
 string itoa(int num)
 {

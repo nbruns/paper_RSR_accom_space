@@ -82,6 +82,11 @@ double get_peak_biomass(double surface_elevation, double MHT,
 double get_peak_biomass_parab(double surface_elevation, double MHT,
 		   double max_depth, double min_depth, double max_bmass);
 
+double get_peak_biomass_parab_fixed_productivity(double surface_elevation, double MHT,
+		   double max_depth, double min_depth, //double max_bmass, // max_mbass now computed, not fixed
+		   double peak_total_productivity,double D_mbm_arg); //new arguements so productivity does not change across root:shoot values
+
+
 // this gets the biomass growth and mortality for a given time of year
 vector<double> biomass_and_mortality(double day, double peak_biomass, double min_biomass,
 		      double day_peak_season, double peak_growth, double min_growth,
@@ -96,7 +101,7 @@ double column_model(double RSLR, double kfactor, double bfactor, double tA, doub
 				  double labile_frac, double refrac_frac,
 				  double theta_root_efold, double effective_svel, double starting_depth_frac,
 				  ofstream& data_out, ofstream& col_out,
-				  double theta_bm_arg, double D_mbm_1_arg, double D_mbm_2_arg);
+				  double theta_bm_arg, double D_mbm_1_arg, double D_mbm_2_arg, double peak_productivity_arg); // NEB additions
 
 // a utility function used to convert integers to strings
 string itoa(int num);
@@ -129,6 +134,7 @@ int main()
 	double effective_svel;
 	double tA;				// the tidal amplitude
 	double peak_Bmass;		// this is returned from the model loop
+	double peak_productivity=7500; // uses for new parabola, this value is from 2,500 peak biomass and R:S of 2 as defualt
 
 	string s_temp;
 	string num;
@@ -172,12 +178,13 @@ int main()
 
 	// full run
 
-	const int s_count=6;
-	double sed_conc_array[s_count] ={.005,.01,.02,.03,.04,.05}; // for S2: 5, and 50 mg/L
-	// double sed_conc_array[s_count] ={.005,.05}; // for S2: 5, and 50 mg/L
-	const int r_count=8;
-	double slr_array[r_count]={.001,.0025,.005,.0075,.01,.0125,.015,.02};
-	// double slr_array[r_count]={.001,.003,.005,.01};
+	const int s_count=1;
+	// double sed_conc_array[s_count] ={.005,.01,.02,.03,.04,.05}; // for S2: 5, and 50 mg/L
+	double sed_conc_array[s_count] ={0}; // for S2: 5, and 50 mg/L
+	// double sed_conc_array[s_count] ={0,.005,.03}; // for S2: 5, and 50 mg/L
+	const int r_count=1;
+	// double slr_array[r_count]={.001,.0025,.005,.0075,.01,.0125,.015,.02};
+	double slr_array[r_count]={.005};
 	const int a_count=4;
 	double d_mbm_2_array[a_count]={1,2,3,4};
 	// //debug run
@@ -229,7 +236,8 @@ int main()
 						   root_efold, effective_svel, start_depth_frac,
 						   data_out, col_out,
 						   theta_bm_arg,
-						   D_mbm_1_arg,D_mbm_2_arg);
+						   D_mbm_1_arg,D_mbm_2_arg,
+						   peak_productivity);
 				time (&end);					// get ending time
 				dif = difftime (end,start);
 				cout << "\nruntime was: " << dif << " seconds\n";
@@ -267,7 +275,8 @@ double column_model(double RSLR, double kfactor, double bfactor, double tA, doub
 				  ofstream& data_out, ofstream& col_out,
 				  double theta_bm_arg, //NEB addition
 				  double D_mbm_1_arg,
-				  double D_mbm_2_arg //NEB addition
+				  double D_mbm_2_arg, //NEB addition
+				  double peak_productivity_arg
 				  )
 {
 
@@ -686,10 +695,13 @@ double column_model(double RSLR, double kfactor, double bfactor, double tA, doub
 		// peak_Bmass =  get_peak_biomass(marsh_surface_elevation, MHT,
 		   //max_depth, min_depth, max_bmass,temperatureincrease,yr,boriginal,bfactor);	//MK- I added temperature,yr,boriginal to this line
 
+		// replace with parabola that keeps produtivity fixed
+		// peak_Bmass =  get_peak_biomass_parab(marsh_surface_elevation, MHT,
+		//    max_depth, min_depth, max_bmass);
 
-		peak_Bmass =  get_peak_biomass_parab(marsh_surface_elevation, MHT,
-		   max_depth, min_depth, max_bmass);
-		
+		peak_Bmass =  get_peak_biomass_parab_fixed_productivity(
+			marsh_surface_elevation, MHT, max_depth, min_depth, 
+			peak_productivity_arg,D_mbm);
 
 
 		if (yr==1) // MK- I added these 2 lines
@@ -970,7 +982,7 @@ double column_model(double RSLR, double kfactor, double bfactor, double tA, doub
    	// MK- New function to save time series data
 	ofstream series_out;
 	//all below is NEB hack for clean runs
-	string run_name = "RSR_adjust_constant_SLR"; //"equilibrium_runs";//"test_run_dir"; // This probably aught to be a parm passed in at runtime
+	string run_name = "RSR_adjust_constant_SLR_FIXED_PRODUCTIVITY"; //"equilibrium_runs";//"test_run_dir"; // This probably aught to be a parm passed in at runtime
 	string output_dir="model_output/" + run_name + "/";
 	string fname2_prefix= output_dir + "RSR_adjust_"; //NEB hack 
 	// string fname2_prefix="series."; //NEB hack 
@@ -1392,6 +1404,46 @@ double get_peak_biomass_parab(double surface_elevation, double MHT,
 
   return B_ps;
  }
+
+
+
+/********************************************************
+// new from NEB, 2024-6-1
+//	now, across RSR values (D_mbm_arg), total producivity is fixed
+// this returns the peak biomass is g/m^2
+******************************************************/
+double get_peak_biomass_parab_fixed_productivity(double surface_elevation, double MHT,
+		   double max_depth, double min_depth, 
+		   double peak_total_productivity,double D_mbm_arg)
+{
+  double depth_range = max_depth-min_depth;
+  double water_depth = MHT-surface_elevation;
+  double B_ps;
+  double a;
+  double max_bmass_RSR_adjusted;
+
+
+  if (water_depth > max_depth || water_depth < min_depth){
+	  B_ps = 0;
+	} else {
+
+	//
+
+ max_bmass_RSR_adjusted= peak_total_productivity / (1 + D_mbm_arg);
+ // Below is the inhereited parabola function, which is not quite right-- 	
+ 	//the max biomass is too low
+	  // B_ps = max_bmass*(water_depth-min_depth)*(max_depth-water_depth); // 
+  //New biomass function from NEB:
+	a = -4 * max_bmass_RSR_adjusted / (depth_range * depth_range);
+	B_ps = a * (water_depth - min_depth) * (water_depth - max_depth);
+	}
+
+  return B_ps;
+ }
+
+
+
+
 
 
 string itoa(int num)
