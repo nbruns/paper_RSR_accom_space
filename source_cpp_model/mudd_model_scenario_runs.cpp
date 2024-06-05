@@ -82,6 +82,10 @@ double get_peak_biomass(double surface_elevation, double MHT,
 double get_peak_biomass_parab(double surface_elevation, double MHT,
 		   double max_depth, double min_depth, double max_bmass);
 
+double get_peak_biomass_parab_fixed_productivity(double surface_elevation, double MHT,
+		   double max_depth, double min_depth, //double max_bmass, // max_mbass now computed, not fixed
+		   double peak_total_productivity,double D_mbm_arg); //new arguements so productivity does not change across root:shoot values
+
 // this gets the biomass growth and mortality for a given time of year
 vector<double> biomass_and_mortality(double day, double peak_biomass, double min_biomass,
 		      double day_peak_season, double peak_growth, double min_growth,
@@ -96,7 +100,8 @@ double column_model(double RSLR, double kfactor, double bfactor, double tA, doub
 				  double labile_frac, double refrac_frac,
 				  double theta_root_efold, double effective_svel, double starting_depth_frac,
 				  ofstream& data_out, ofstream& col_out,
-				  double theta_bm_arg, double D_mbm_arg);
+				  double theta_bm_arg, double D_mbm_arg, double peak_productivity_arg); //NEB addition
+
 
 // a utility function used to convert integers to strings
 string itoa(int num);
@@ -129,6 +134,7 @@ int main()
 	double effective_svel;
 	double tA;				// the tidal amplitude
 	double peak_Bmass;		// this is returned from the model loop
+	double peak_productivity=7500; // uses for new parabola, this value is from 2,500 peak biomass and R:S of 2 as defualt
 
 	string s_temp;
 	string num;
@@ -167,49 +173,51 @@ int main()
 	// if the biomass is 0, then the model has overshot
 	// so the model increases the SLR by half the value it increased
 	// previously and runs again#
+
+	// snip for constructing complex sequences
+    	// for (int i = 0; i <rsr_value_count; ++i) {
+    	//     rsr_value_array[i] = 0.1 * (i + 1);
+    	// }
+
 	double old_SLR=0;
 	double SLR_increase = 0.0001;
 
 	// define array of RSR values
 	double D_mbm_arg; //declre loop parameter
-	const int rsr_value_count = 10;
-    	double rsr_value_array[rsr_value_count] = {
-    		.25,.5,1,2,3,4,5,6,7,8
-    	};
-    	// for (int i = 0; i <rsr_value_count; ++i) {
-    	//     rsr_value_array[i] = 0.1 * (i + 1);
-    	// }
 
 
-	double sed_conc_array[5] ={.001,.005,.01,.03,.05}; // for S2: 1, 5, and 50 mg/L
-
-	// tot_conc = .001;		// i_ssc is 2, so ssc = 0.01, or 10mg/L
-	//while (SLR_increase >= .0001)	 //MK- I commented this out
-	for( int r =1; r<=rsr_value_count; r++){
-
-		for (int s = 0; s<5; s++)
+	
+	// Figure 4 values
+	const int a_count = 10;
+	double rsr_value_array[a_count] = {0.25, 0.5, 1, 2, 3, 4, 5, 6, 7, 8};
+	const int s_count = 7;
+	double sed_conc_array[s_count] = {0, 0.005, 0.01,.02, 0.03,.04, 0.05};
+	    
+	 // Figure special additional values 
+	// const int a_count = 3;
+	// double rsr_value_array[a_count] = {1, 2, 4};
+	// const int s_count = 2;
+	// double sed_conc_array[s_count] = {0.005, 0.03};
+	// double sed_conc_array[s_count] = {0.02, 0.04};
+    
+	SLR=.002; // this is dummy-- SLR is read from file
+	for( int a =0; a<a_count; a++){
+		for (int s = 0; s<s_count; s++)
 		{
 
-			double theta_bm_arg =0;
-			// double theta_bm_arg =-6.8;
-			// double D_mbm_arg=2.5; //NEB addition
-			D_mbm_arg=rsr_value_array[r]; //NEB addition
+			double theta_bm_arg =0; // Turns off depth dependence of RSR, -6.8 in Mudd papers
+			D_mbm_arg=rsr_value_array[a]; //sets RSR, 2.5 was default in early development
 			tot_conc=sed_conc_array[s];
 			//below lines 3 are fixed transformations of overall silt concentration
 				conc_silt = tot_conc*silt_frac;
 				conc_fs = 0;
 				refrac_frac = 1-labile_frac;
 
-			// kfactor=kfactor_array[i];	// MK- Next 3 lines are to cycle through multiple parameters
-			// bfactor=bfactor_array[i];
-			//NEB-- turn these off for this paper
+
 			kfactor=0;
 			bfactor=0;
 			cout<<  " sed conc: " << tot_conc <<
 				" kfactor= " << kfactor << " bfactor= " << bfactor << endl;
-
-			//SLR = double(i)*0.001;
-			SLR = old_SLR+SLR_increase;
 
 			cout << endl << " fname: " << fname << endl
 				 << "theta_gamma_roots: " << root_efold << endl
@@ -234,22 +242,14 @@ int main()
 					   root_efold, effective_svel, start_depth_frac,
 					   data_out, col_out,
 					   theta_bm_arg,
-					   D_mbm_arg);
+					   D_mbm_arg,
+					   peak_productivity);
 			time (&end);					// get ending time
 			dif = difftime (end,start);
 			cout << "\nruntime was: " << dif << " seconds\n";
 			col_out.close();
 
-			if (peak_Bmass > 0)			// we want SLR to go up when eq depth is approached, as long as plants remain. Stop everything when plants die.
-			{
-				old_SLR = SLR;
-			}
-			else
-			{
-				cout << "Plants died at SLR = " << SLR << " m/yr" << endl;
-				//SLR_increase = SLR_increase/2;
-				SLR_increase=0;
-			}
+			
 		}
 
 	}
@@ -269,7 +269,8 @@ double column_model(double RSLR, double kfactor, double bfactor, double tA, doub
 				  double theta_root_efold, double effective_svel, double start_depth_frac,
 				  ofstream& data_out, ofstream& col_out,
 				  double theta_bm_arg, //NEB addition
-				  double D_mbm_arg //NEB addition
+				  double D_mbm_arg, //NEB addition
+				  double peak_productivity_arg
 				  )
 {
 
@@ -690,9 +691,17 @@ double column_model(double RSLR, double kfactor, double bfactor, double tA, doub
 		//Wedge
 		// peak_Bmass =  get_peak_biomass(marsh_surface_elevation, MHT,
 		//    max_depth, min_depth, max_bmass,temperatureincrease,yr,boriginal,bfactor);	//MK- I added temperature,yr,boriginal to this line
+
 		//Parabola
-		 peak_Bmass =  get_peak_biomass_parab(marsh_surface_elevation, MHT,
- 			 max_depth, min_depth, max_bmass);
+		 // peak_Bmass =  get_peak_biomass_parab(marsh_surface_elevation, MHT,
+ 		// 	 max_depth, min_depth, max_bmass);
+
+		//Parabola with fixed biomass
+		 peak_Bmass =  get_peak_biomass_parab_fixed_productivity(
+		 	marsh_surface_elevation, MHT, max_depth, min_depth, 
+		 	peak_productivity_arg,D_mbm);
+
+
 
 		if (yr==1) // MK- I added these 2 lines
 		{boriginal=peak_Bmass;}
@@ -972,7 +981,7 @@ double column_model(double RSLR, double kfactor, double bfactor, double tA, doub
    	// MK- New function to save time series data
 	ofstream series_out;
 	//all below is NEB hack for clean runs
-	string run_name ="scenario_runs_fig_4"; // This probably aught to be a parm passed in at runtime
+	string run_name ="scenario_runs_fig_4_FIXED_PRODUCTIVITY"; // This probably aught to be a parm passed in at runtime
 	string output_dir="model_output/" + run_name + "/";
 	string fname2_prefix= output_dir + "series."; //NEB hack 
 	// string fname2_prefix="series."; //NEB hack 
@@ -1382,6 +1391,44 @@ double get_peak_biomass_parab(double surface_elevation, double MHT,
  }
 
 
+/********************************************************
+// new from NEB, 2024-6-1
+//	now, across RSR values (D_mbm_arg), total producivity is fixed
+// this returns the peak biomass is g/m^2
+******************************************************/
+double get_peak_biomass_parab_fixed_productivity(double surface_elevation, double MHT,
+		   double max_depth, double min_depth, 
+		   double peak_total_productivity,double D_mbm_arg)
+{
+  double depth_range = max_depth-min_depth;
+  double water_depth = MHT-surface_elevation;
+  double B_ps;
+  double a;
+  double max_bmass_RSR_adjusted;
+
+
+  if (water_depth > max_depth || water_depth < min_depth){
+	  B_ps = 0;
+	} else {
+
+	//
+
+ max_bmass_RSR_adjusted= peak_total_productivity / (1 + D_mbm_arg);
+ // Below is the inhereited parabola function, which is not quite right-- 	
+ 	//the max biomass is too low
+	  // B_ps = max_bmass*(water_depth-min_depth)*(max_depth-water_depth); // 
+  //New biomass function from NEB:
+	a = -4 * max_bmass_RSR_adjusted / (depth_range * depth_range);
+	B_ps = a * (water_depth - min_depth) * (water_depth - max_depth);
+	}
+
+  return B_ps;
+ }
+
+
+
+
+
 string itoa(int num)
 {
     stringstream converter;
@@ -1623,7 +1670,7 @@ vector<double> get_trap_TKE_eff_sett(double Tidal_Period, double Tidal_Amplitude
                 //cout << "TKE is: " << TKE << " and w_up is: " << w_up << endl;
 
                 //ws_mean_reduc += (particle_settling_velocities[0]-w_up)/
-                                                        particle_settling_velocities[0];
+                                                        // particle_settling_velocities[0]; // NEB commented this out, 2024-5-27, looks like mistake, not sure if effects performances
                 //ws_reduc_counter++;
 
                 //cout << "LINE 352, flow velocity is: " << flow_vel << endl;
