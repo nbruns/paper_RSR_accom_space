@@ -152,7 +152,8 @@ int main()
 	start_depth_frac = double(i_start_frac)*0.1;
 	tA = 0.5;
 	//tA = 0.1*double(i_tA)+0.4;		// this is the tidal amplitude
-	tot_conc = .001;		// i_ssc is 2, so ssc = 0.01, or 10mg/L
+	// tot_conc = .001;		// i_ssc is 2, so ssc = 0.01, or 10mg/L
+	tot_conc = .03;		// i_ssc is 2, so ssc = 0.01, or 10mg/L
 
 	// these are the parameters for north inlet
 	root_efold = 0.11;
@@ -170,18 +171,18 @@ int main()
 	// if the biomass is 0, then the model has overshot
 	// so the model increases the SLR by half the value it increased
 	// previously and runs again#
-	double old_SLR=0;
-	double SLR_increase = 0.0001;
 
 	//while (SLR_increase >= .0001)	 //MK- I commented this out
-	for (int i = 0; i<=3; i++)
-	{
-		kfactor=kfactor_array[i];	// MK- Next 3 lines are to cycle through multiple parameters
-		bfactor=bfactor_array[i];
-		cout<< " Run #: " << i+1 << " kfactor= " << kfactor << " bfactor= " << bfactor << endl;
+	// for (int i = 0; i<=3; i++)
+		// kfactor=kfactor_array[i];	// MK- Next 3 lines are to cycle through multiple parameters
+		// bfactor=bfactor_array[i];
+
+		kfactor=0;	// MK- Next 3 lines are to cycle through multiple parameters
+		bfactor=0;
+
 
 		//SLR = double(i)*0.001;
-		SLR = old_SLR+SLR_increase;
+		SLR = .08;  // 5 mm/yr
 
 		cout << endl << " fname: " << fname << endl
 			 << "theta_gamma_roots: " << root_efold << endl
@@ -210,17 +211,7 @@ int main()
 		cout << "\nruntime was: " << dif << " seconds\n";
 		col_out.close();
 
-		if (peak_Bmass > 0)			// we want SLR to go up when eq depth is approached, as long as plants remain. Stop everything when plants die.
-		{
-			old_SLR = SLR;
-		}
-		else
-		{
-			cout << "Plants died at SLR = " << SLR << " m/yr" << endl;
-			//SLR_increase = SLR_increase/2;
-			SLR_increase=0;
-		}
-	}
+
 
 
 
@@ -617,16 +608,16 @@ double column_model(double RSLR, double kfactor, double bfactor, double tA, doub
 		t_ime = yr*365;
 		yr_time = t_ime/365;
 
-		if (yr<=runup)		
-		{SLR= .0017;}
-		else
-		{SLR=slvector[yr-runup]-slvector[yr-runup-1];} //MK- I added this line to cacluate the rate of sea level rise from the loaded file
-		//cout << " Yr: "<< yr << " Sl: " << slvector[yr] << " Sl yr-1: " << slvector[yr-1] << " SLRR: " << SLR << endl;
+		// if (yr<=runup)		
+		// {SLR= .0017;}
+		// else
+		// {SLR=slvector[yr-runup]-slvector[yr-runup-1];} //MK- I added this line to cacluate the rate of sea level rise from the loaded file
+		// //cout << " Yr: "<< yr << " Sl: " << slvector[yr] << " Sl yr-1: " << slvector[yr-1] << " SLRR: " << SLR << endl;
 		
-		if (yr<=runup)
-		{temperatureincrease=0;}//temperaturevector[yr]-temperaturevector[0]; //MK- I added this line too
-		else
-		{temperatureincrease=temperaturevector[yr-runup]-temperaturevector[0];}		
+		// if (yr<=runup)
+		// {temperatureincrease=0;}//temperaturevector[yr]-temperaturevector[0]; //MK- I added this line too
+		// else
+		// {temperatureincrease=temperaturevector[yr-runup]-temperaturevector[0];}		
 
 		// reset the biomass
 		Bmass = 0;
@@ -925,8 +916,8 @@ double column_model(double RSLR, double kfactor, double bfactor, double tA, doub
 	string run_name = "baseline_drowning_YES_litter_DYNAMIC_RSR"; //"equilibrium_runs";//"test_run_dir"; // This probably aught to be a parm passed in at runtime
 	string output_dir="model_output/" + run_name + "/";
 	string fname2_prefix= output_dir + "constant_SLR_run_"; //NEB hack 
+
 	// string fname2_prefix="series.";
-	
 	string fname2_suffix=".txt";
 	string fname2_k=itoa(0);
 	string fname2_b=itoa(0);
