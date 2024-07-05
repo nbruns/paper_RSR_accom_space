@@ -174,9 +174,10 @@ int main()
 	// if the biomass is 0, then the model has overshot
 	// so the model increases the SLR by half the value it increased
 	// previously and runs again#
-	double inital_SLR=.004;
+	double inital_SLR=.002;
 	// double inital_SLR=0.02;
-	double SLR_increase = 0.0005;//0.001;
+	double SLR_increase = 0.001;
+	// double SLR_increase = 0.0005;//0.001;
 
 	const int s_count= 7;
 	double sed_conc_array[s_count] ={0,.005,.01,.02,.03,.04,.05}; // for S2: 1, 5, and 50 mg/L
@@ -367,7 +368,7 @@ double column_model(double RSLR, double kfactor, double bfactor, double tA, doub
 	int ab_pointer_sz;
 
 	// int end_year = 300;				// the final year	
-	int end_year = 400;//200;				// the final year	
+	int end_year = 200;//200;				// the final year	
 							// if you change this, check line 631
 							//int runup=end_year-100;
 						//MK- I changed this from 1500 to 10000
@@ -845,7 +846,8 @@ double column_model(double RSLR, double kfactor, double bfactor, double tA, doub
 			{
 				// the equation below is divided by 1000 because mortality is calculated in
 				// g/m^2 and deposition is in kg
-				depo_masses[ carbon_types[i] ] += chi_carbon_types[i]*bm_and_mort[1]/1000;
+				// depo_masses[ carbon_types[i] ] += chi_carbon_types[i]*bm_and_mort[1]/1000;
+				depo_masses[ carbon_types[i] ] += 0*chi_carbon_types[i]*bm_and_mort[1]/1000; //zeroing out shoot contribution
 			}
 
 			// now deposit the radiogenic species.
@@ -981,7 +983,7 @@ double column_model(double RSLR, double kfactor, double bfactor, double tA, doub
    	// MK- New function to save time series data
 	ofstream series_out;
 	//all below is NEB hack for clean runs
-	string run_name = "equilibrium_get_drowning_high_res_FIXED_PRODUCTIVITY"; //"equilibrium_runs";//"test_run_dir"; // This probably aught to be a parm passed in at runtime
+	string run_name = "equilibrium_get_drowning_low_res_FIXED_PRODUCTIVITY_NO_LITTER"; //"equilibrium_runs";//"test_run_dir"; // This probably aught to be a parm passed in at runtime
 	string output_dir="model_output/" + run_name + "/";
 	string fname2_prefix= output_dir + "threshold.slr"; //NEB hack 
 	// string fname2_prefix="series."; //NEB hack 
