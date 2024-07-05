@@ -178,15 +178,15 @@ int main()
 
 	// full run
 
-	const int s_count=1;
+	const int s_count=3;
 	// double sed_conc_array[s_count] ={.005,.01,.02,.03,.04,.05}; // for S2: 5, and 50 mg/L
-	double sed_conc_array[s_count] ={0}; // for S2: 5, and 50 mg/L
-	// double sed_conc_array[s_count] ={0,.005,.03}; // for S2: 5, and 50 mg/L
-	const int r_count=1;
-	// double slr_array[r_count]={.001,.0025,.005,.0075,.01,.0125,.015,.02};
-	double slr_array[r_count]={.005};
-	const int a_count=4;
-	double d_mbm_2_array[a_count]={1,2,3,4};
+	// double sed_conc_array[s_count] ={0}; // for S2: 5, and 50 mg/L
+	double sed_conc_array[s_count] ={0,.005,.03}; // for S2: 5, and 30 mg/L
+	const int r_count=8;
+	double slr_array[r_count]={.001,.0025,.005,.0075,.01,.0125,.015,.02};
+	// double slr_array[r_count]={.01};
+	const int a_count=3;
+	double d_mbm_2_array[a_count]={1,2,4};
 	// //debug run
 
 	// const int s_count=2;
@@ -846,7 +846,8 @@ double column_model(double RSLR, double kfactor, double bfactor, double tA, doub
 			{
 				// the equation below is divided by 1000 because mortality is calculated in
 				// g/m^2 and deposition is in kg
-				depo_masses[ carbon_types[i] ] += chi_carbon_types[i]*bm_and_mort[1]/1000;
+				// depo_masses[ carbon_types[i] ] += chi_carbon_types[i]*bm_and_mort[1]/1000;
+				depo_masses[ carbon_types[i] ] += 0*chi_carbon_types[i]*bm_and_mort[1]/1000; //NEB-- 0 out litter contributions
 			}
 
 			// now deposit the radiogenic species.
@@ -982,7 +983,7 @@ double column_model(double RSLR, double kfactor, double bfactor, double tA, doub
    	// MK- New function to save time series data
 	ofstream series_out;
 	//all below is NEB hack for clean runs
-	string run_name = "RSR_adjust_constant_SLR_FIXED_PRODUCTIVITY"; //"equilibrium_runs";//"test_run_dir"; // This probably aught to be a parm passed in at runtime
+	string run_name = "RSR_adjust_constant_SLR_FIXED_PRODUCTIVITY_NO_LITTER"; //"equilibrium_runs";//"test_run_dir"; // This probably aught to be a parm passed in at runtime
 	string output_dir="model_output/" + run_name + "/";
 	string fname2_prefix= output_dir + "RSR_adjust_"; //NEB hack 
 	// string fname2_prefix="series."; //NEB hack 
