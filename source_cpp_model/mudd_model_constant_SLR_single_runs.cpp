@@ -826,7 +826,8 @@ double column_model(double RSLR, double kfactor, double bfactor, double tA, doub
 			{
 				// the equation below is divided by 1000 because mortality is calculated in
 				// g/m^2 and deposition is in kg
-				depo_masses[ carbon_types[i] ] += chi_carbon_types[i]*bm_and_mort[1]/1000;
+				// depo_masses[ carbon_types[i] ] += chi_carbon_types[i]*bm_and_mort[1]/1000;
+				depo_masses[ carbon_types[i] ] += 0*chi_carbon_types[i]*bm_and_mort[1]/1000;  //zero out to simulate no litter contributions
 			}
 
 			// now deposit the radiogenic species.
@@ -962,7 +963,7 @@ double column_model(double RSLR, double kfactor, double bfactor, double tA, doub
    	// MK- New function to save time series data
 	ofstream series_out;
 	//all below is NEB hack for clean runs
-	string run_name = "constant_SLR_single_runs_FIXED_PRODUCTIVITY"; //"equilibrium_runs";//"test_run_dir"; // This probably aught to be a parm passed in at runtime
+	string run_name = "constant_SLR_single_runs_FIXED_PRODUCTIVITY_NO_LITTER"; //"equilibrium_runs";//"test_run_dir"; // This probably aught to be a parm passed in at runtime
 	string output_dir="model_output/" + run_name + "/";
 	string fname2_prefix= output_dir + "constant_SLR_run_"; //NEB hack 
 	// string fname2_prefix="series."; //NEB hack 
