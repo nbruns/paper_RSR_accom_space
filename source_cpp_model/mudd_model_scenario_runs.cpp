@@ -188,16 +188,17 @@ int main()
 
 	
 	// Figure 4 values
-	const int a_count = 10;
-	double rsr_value_array[a_count] = {0.25, 0.5, 1, 2, 3, 4, 5, 6, 7, 8};
-	const int s_count = 7;
-	double sed_conc_array[s_count] = {0, 0.005, 0.01,.02, 0.03,.04, 0.05};
+	// const int a_count = 10;
+	// double rsr_value_array[a_count] = {0.25, 0.5, 1, 2, 3, 4, 5, 6, 7, 8};
+	// const int s_count = 7;
+	// double sed_conc_array[s_count] = {0, 0.005, 0.01,.02, 0.03,.04, 0.05};
 	    
 	 // Figure special additional values 
-	// const int a_count = 3;
-	// double rsr_value_array[a_count] = {1, 2, 4};
-	// const int s_count = 2;
-	// double sed_conc_array[s_count] = {0.005, 0.03};
+	const int a_count = 3;
+	double rsr_value_array[a_count] = {1, 2, 4};
+	const int s_count = 2;
+	double sed_conc_array[s_count] = {0.005, 0.03};
+	
 	// double sed_conc_array[s_count] = {0.02, 0.04};
     
 	SLR=.002; // this is dummy-- SLR is read from file
@@ -845,7 +846,8 @@ double column_model(double RSLR, double kfactor, double bfactor, double tA, doub
 			{
 				// the equation below is divided by 1000 because mortality is calculated in
 				// g/m^2 and deposition is in kg
-				depo_masses[ carbon_types[i] ] += chi_carbon_types[i]*bm_and_mort[1]/1000;
+				// depo_masses[ carbon_types[i] ] += chi_carbon_types[i]*bm_and_mort[1]/1000;
+				depo_masses[ carbon_types[i] ] += 0*chi_carbon_types[i]*bm_and_mort[1]/1000; // NEB: zero this out for now
 			}
 
 			// now deposit the radiogenic species.
@@ -981,7 +983,7 @@ double column_model(double RSLR, double kfactor, double bfactor, double tA, doub
    	// MK- New function to save time series data
 	ofstream series_out;
 	//all below is NEB hack for clean runs
-	string run_name ="scenario_runs_fig_4_FIXED_PRODUCTIVITY"; // This probably aught to be a parm passed in at runtime
+	string run_name ="scenario_runs_fig_4_FIXED_PRODUCTIVITY_NO_LITTER"; // This probably aught to be a parm passed in at runtime
 	string output_dir="model_output/" + run_name + "/";
 	string fname2_prefix= output_dir + "series."; //NEB hack 
 	// string fname2_prefix="series."; //NEB hack 
