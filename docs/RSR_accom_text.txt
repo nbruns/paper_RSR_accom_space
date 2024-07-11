@@ -1,0 +1,65 @@
+RSR_accom_text.txt
+
+	great Brad line " Perturbing this equilibrium by making the platform deeper (shallower) increases (decreases) biomass and aggradation rate, restoring equilibrium."
+
+Accomodation space and accretion-depth relationships (box)
+Because accretion increases with inundation depth, equilibrium depths exist where accretion balances sea level rise (Morris 2002, Marani 2007, Murray et al 2008). 
+Increases to the rate of accretion at a given depth, driven for instance by changes in productivity, biomass allocation or sediment concentration (Kirwan and Mudd), will decrease the depth at which accretion balances sea level rise (fig 1). 
+[depth adjustment] Conversely, an increased sea level rise rate under a fixed accretion-depth relationship will increase the equilibrium depth. This interplay of sea-level rise, depth and accretion is often described through the sedimentary geology concept of accomodation space, where the increased depth created by rising seas accomodates additional accretion. Accommodation space was originally used to describe how over geological time scales, sediment will accumulate in a depression at decelerating rates until the depression is filled. When used to describe coastal morhpodynamics, sea level rise acts to perpetually increase the depth of a figurative depression, preventing sedimentation rates from decreasing.  
+
+The peak of the accretion-depth relationship can also be used to approximate the drowning threshold RSLRR of a marsh. Depth-dependent decomposition complicates this interpretation, however, as faster SLR rates increase carbon carbon preservation through burial below the oxygenated zone, increasing the accretion rates at each depth (Mudd 2009, fig S.1).  
+
+
+	 " Accommodation space was originally used in the context of sedimentary geology work describing how a depression depression at decelerating rates until the depression is filled. "
+
+
+
+
+Given fixed 
+The depth at which
+Equilibrium depth--
+	the relati
+
+Figs 2-3 (RSR adjust experiment)
+	prompts
+		Why did we do it?
+			To explore how root to shoot ratios governs 
+
+		What are these?
+			We subjected a 
+		What did we find?
+
+	Model description
+
+	Results
+		We first performed a model experiment at a fixed RSLRR (2.5 mm/yr) to understand the impact of variation in biomass allocation on organic matter accumulation, and how this impact varies between a low and high sediment concentrations. Here, under representative high and low suspended sediment concentrations (SSC) of 5 and 30 mg/L, we doubled and halved the root:shoot ratio of modeled marshes created using a 100-year spinup under a baseline root to shoot ratio of 2 (figure 2). 
+
+		Under both SSC's, doubling the root:shoot ratio produced an instantaneous increase in accretion and organic matter accumulation, and a decrease in inorganic sediment deposition. While accretion rates then adjusted until they re-equilibrated with RSLR, organic matter accumulation and inorganic sediment deposition remained elevated and decreased, respectively, after re-equilibration. Thus, at SLRR below the threshold rate (2.5 mm/yr), biomass allocation did not impact total accretion, but it did change the rates of organic matter accumulation by shifting the relative contribution to accretion by sediment deposition and in-situ organic production. Further, the magnitude of the relative shift in carbon accumulation depended on SSC. As SSC, doubling and halving the RSR increased and decreased organic accumulation rates by xx and xx. Under low SSC, the magnitude of differences were consistently lower (xx and xx). 
+			[cut, This pattern where organic matter accumulation showed a stronger relative response in high SSC generally held in RSLRR rates, until RSLRR approached the threshold rate that support maximal productivity.]
+ 
+		Interestingly, inundation depth responded to the RSR adjustment in different directions in the two sediment concentrations. In low sediment, doubling RSR decreased inundation depth, while in high sediment, it increased inundation depth. This flipped relationship reflects how sediment concentration changes the relationship between accretion and biomass allocation, where at low sediment concentrations, greater roots increases accretion at each depth, while in high sediment, greater shoots increased accretion at all depths (fig 1.) As described in box 1, increases in the accretion-depth relationship decrease the equilibrium depth required to match a given SLRR.
+
+
+
+Fig 4
+drowning SLRs
+		We further explored this relationship between accretion and RSR by assessing changes in threshold SLRR after doubling and halving RSR across a range of SSC's. The impact of RSR adjustment on threshold RSLR depended on sediment concentration. When SSC was low, doubling RSR increased the threshold rate. When SSC was high, doubling RSR decreased the threshold RSLRR. [The switch point, creating 2 ranges] [Thus, in low sediment, more roots increases both carbon and marsh survival, while in high sediment, more roots increases carbon but decreases marsh survival.] [however, the overall magnitude was low, and high sediment marshes are already fine]. 
+
+fig 5-6
+	Finally, we simulated marsh evolution across variable RSR ratios under the accelerating RSLR projected for the next century across. Tracking total organic matter accumulation in these simulations integrates the impact of RSR on both intensity of organic matter production and marsh life span. We followed Kirwan and Mudd 2012, creating modeled marshes through 100-year spinups that were equilibrated to historic 1.7 mm yr RSLR. We then applied accelerating sea-level rise rates derived from the IPCC A2 scenario (an increase of xx cm by 2100). Organic matter accumulation rates were consistent with our equilibrium experiments, increasing with a doubling of RSR by xx and xx % under low and high SSC, and decreasing with a halving of RSR by xx and xx % under low and high SSC. Accretion differences across RSR rates showed minimal and no difference across RSR in low and high SSC. Thus, our results suggest that adjustments to RSR alone, separate from adjustments in total productivity, can have a substantial impact on carbon sequestration, but not on marsh persistence. 
+		* if I extend to 200 years of simulation, mark the impact of accelerating rates
+
+
+Studies that have documented changes in root:shoot ratio suggest this trait shift drives associated adjustments in both accretion and carbon accumulation. Here, we find: 
+	- 
+	- 
+
+
+
+
+
+
+
+conclusion
+
+
