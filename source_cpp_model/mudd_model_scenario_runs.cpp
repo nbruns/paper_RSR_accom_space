@@ -162,7 +162,8 @@ int main()
 
 	// these are the parameters for north inlet
 	root_efold = 0.11;
-	// effective_svel = 0.000037;			// UPDATE 9-sept-2011: tke model calcualtes effective settling directly
+
+	effective_svel = 0.0001;			// UPDATE 9-sept-2011: tke model calcualtes effective settling directly
 	labile_frac = 0.842;
 	silt_frac = 1.0;
 
@@ -188,16 +189,16 @@ int main()
 
 	
 	// Figure 4 values
-	// const int a_count = 10;
-	// double rsr_value_array[a_count] = {0.25, 0.5, 1, 2, 3, 4, 5, 6, 7, 8};
-	// const int s_count = 7;
-	// double sed_conc_array[s_count] = {0, 0.005, 0.01,.02, 0.03,.04, 0.05};
+	const int a_count = 10;
+	double rsr_value_array[a_count] = {0.25, 0.5, 1, 2, 3, 4, 5, 6, 7, 8};
+	const int s_count = 7;
+	double sed_conc_array[s_count] = {0, 0.005, 0.01,.02, 0.03,.04, 0.05};
 	    
 	 // Figure special additional values 
-	const int a_count = 3;
-	double rsr_value_array[a_count] = {1, 2, 4};
-	const int s_count = 2;
-	double sed_conc_array[s_count] = {0.005, 0.03};
+	// const int a_count = 3;
+	// double rsr_value_array[a_count] = {1, 2, 4};
+	// const int s_count = 2;
+	// double sed_conc_array[s_count] = {0.005, 0.03};
 	
 	// double sed_conc_array[s_count] = {0.02, 0.04};
     
@@ -291,7 +292,8 @@ double column_model(double RSLR, double kfactor, double bfactor, double tA, doub
 
 	///////MK- I added this section to load SL. Put all SL calculations in column_model function /////////////
 	ifstream myfile2;
-	myfile2.open("A2smoothsl.txt", ios::in);
+	// myfile2.open("A2smoothsl.txt", ios::in);
+	myfile2.open("A2smoothsl_extended.txt", ios::in);
 	vector<double> slvector;
 	double sealevel;
 	while (!myfile2.eof())	// This makes a vector that contains one extra entry at end
@@ -366,8 +368,8 @@ double column_model(double RSLR, double kfactor, double bfactor, double tA, doub
 											// layer of an annual band
 	int ab_pointer_sz;
 
-	//int end_year = 300;				// the final year	
-	int end_year = 200;				// the final year	
+	int end_year = 300;				// the final year	
+	// int end_year = 200;				// the final year	
 							// if you change this, check line 631
 							//int runup=end_year-100;
 						//MK- I changed this from 1500 to 10000
@@ -547,7 +549,7 @@ double column_model(double RSLR, double kfactor, double bfactor, double tA, doub
 
 
 	// SMM 9-sept: calcualte the particle settling velocities explicitly
-	effective_svel = calculate_w_s(particle_diameters[0]);
+	// effective_svel = calculate_w_s(particle_diameters[0]); //July 5th-- NEB removes
 
 
 	// reset the sea level rise and concnetrations for this run
@@ -983,7 +985,7 @@ double column_model(double RSLR, double kfactor, double bfactor, double tA, doub
    	// MK- New function to save time series data
 	ofstream series_out;
 	//all below is NEB hack for clean runs
-	string run_name ="scenario_runs_fig_4_FIXED_PRODUCTIVITY_NO_LITTER"; // This probably aught to be a parm passed in at runtime
+	string run_name ="scenario_runs_fig_4_FIXED_PRODUCTIVITY_NO_LITTER_low_svel"; // This probably aught to be a parm passed in at runtime
 	string output_dir="model_output/" + run_name + "/";
 	string fname2_prefix= output_dir + "series."; //NEB hack 
 	// string fname2_prefix="series."; //NEB hack 
