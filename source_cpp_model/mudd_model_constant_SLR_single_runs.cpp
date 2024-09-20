@@ -145,9 +145,6 @@ int main()
     vector<double> TC(10);
     TC[0] = 0.01;
 
-    double kfactor_array[4] = {0,kfactor,kfactor,0};	// MK- To do multiple paramter runs
-    double bfactor_array[4] = {0,bfactor,0,bfactor};	// MK- 1st is ambient, 2nd enhances both, 3rd enhances decay, 4th enhances productivity
-
     ofstream data_out;
     data_out.open(fname.c_str());
 
@@ -164,7 +161,7 @@ int main()
 
 	// these are the parameters for north inlet
 	root_efold = 0.11;
-	// effective_svel = 0.000037;			// UPDATE 9-sept-2011: tke model calcualtes effective settling directly
+	effective_svel = 0.0001; // UPDATE 9-sept-2011: tke model calcualtes effective settling directly
 	labile_frac = 0.842;
 	silt_frac = 1.0;
 
@@ -175,11 +172,14 @@ int main()
 	// if the biomass is 0, then the model has overshot
 	// so the model increases the SLR by half the value it increased
 	// previously and runs again#
-	double static_SLR = .068;//.01;
-	const int s_count= 2;
-	double sed_conc_array[s_count] ={.005,.03}; // for S2: 1, 5, and 50 mg/L
-	const int a_count=4;
-	double d_mbm_array[a_count]={1,2,3,4};
+	double static_SLR = .016;//.01;
+	const int s_count= 3;
+	double sed_conc_array[s_count] ={.005,.03,.05}; // 
+	// double sed_conc_array[s_count] ={.005}; // 
+	const int a_count=3;
+	double d_mbm_array[a_count]={1,2,4};
+	// double d_mbm_array[a_count]={2};
+
 	double D_mbm_arg; //NEB addition
 	for(int s=0;s<s_count;s++){
 		for(int a=0;a<a_count;a++){
@@ -198,6 +198,7 @@ int main()
 				cout << endl << " fname: " << fname << endl
 					 << "SLR is: " << SLR << endl
 					 << "tot_conc is: " << conc_silt << endl
+					 << "effective s vel: " << effective_svel << endl
 					 << "RSR is: " << D_mbm_arg << endl
 					 // << "initial SLR is: " << inital_SLR << endl
 					 << "tidal amplitude is: " << tA << endl;
@@ -346,7 +347,7 @@ double column_model(double RSLR, double kfactor, double bfactor, double tA, doub
 	int ab_pointer_sz;
 
 	// int end_year = 300;				// the final year	
-	int end_year = 400;//200;				// the final year	
+	int end_year = 200;				// the final year	
 							// if you change this, check line 631
 							//int runup=end_year-100;
 						//MK- I changed this from 1500 to 10000
@@ -526,7 +527,7 @@ double column_model(double RSLR, double kfactor, double bfactor, double tA, doub
 
 
 	// SMM 9-sept: calcualte the particle settling velocities explicitly
-	effective_svel = calculate_w_s(particle_diameters[0]);
+	// effective_svel = calculate_w_s(particle_diameters[0]); // NEB comments out on July 5
 
 
 	// reset the sea level rise and concnetrations for this run
@@ -963,7 +964,7 @@ double column_model(double RSLR, double kfactor, double bfactor, double tA, doub
    	// MK- New function to save time series data
 	ofstream series_out;
 	//all below is NEB hack for clean runs
-	string run_name = "constant_SLR_single_runs_FIXED_PRODUCTIVITY_NO_LITTER"; //"equilibrium_runs";//"test_run_dir"; // This probably aught to be a parm passed in at runtime
+	string run_name = "constant_SLR_single_runs_FIXED_PRODUCTIVITY_NO_LITTER_low_svel"; //"equilibrium_runs";//"test_run_dir"; // This probably aught to be a parm passed in at runtime
 	string output_dir="model_output/" + run_name + "/";
 	string fname2_prefix= output_dir + "constant_SLR_run_"; //NEB hack 
 	// string fname2_prefix="series."; //NEB hack 

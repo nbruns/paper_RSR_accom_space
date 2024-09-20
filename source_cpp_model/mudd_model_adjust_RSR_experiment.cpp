@@ -162,7 +162,8 @@ int main()
 
 	// these are the parameters for north inlet
 	root_efold = 0.11;
-	// effective_svel = 0.000037;			// UPDATE 9-sept-2011: tke model calcualtes effective settling directly
+	effective_svel = 0.0001;			// UPDATE 9-sept-2011: tke model calcualtes effective settling directly
+							// Update July 5-2024: hand supply settling velocity
 	labile_frac = 0.842;
 	silt_frac = 1.0;
 
@@ -178,13 +179,15 @@ int main()
 
 	// full run
 
-	const int s_count=3;
-	// double sed_conc_array[s_count] ={.005,.01,.02,.03,.04,.05}; // for S2: 5, and 50 mg/L
+	const int s_count= 7;
+	double sed_conc_array[s_count] ={0,.005,.01,.02,.03,.04,.05}; // for S2: 1, 5, and 50 mg/L
 	// double sed_conc_array[s_count] ={0}; // for S2: 5, and 50 mg/L
-	double sed_conc_array[s_count] ={0,.005,.03}; // for S2: 5, and 30 mg/L
-	const int r_count=8;
-	double slr_array[r_count]={.001,.0025,.005,.0075,.01,.0125,.015,.02};
-	// double slr_array[r_count]={.01};
+	// double sed_conc_array[s_count] ={0,.005,.03}; // for S2: 5, and 30 mg/L
+	// double sed_conc_array[s_count] ={.005,.03}; // for S2: 5, and 30 mg/L
+	const int r_count=1;
+	// double slr_array[r_count]={.001,.0025,.005,.0075,.01,.0125,.015,.02};
+	// double slr_array[r_count]={.001,.002, .003,.004,.005,.006,.007,.008,.009};
+	double slr_array[r_count]={.0025};
 	const int a_count=3;
 	double d_mbm_2_array[a_count]={1,2,4};
 	// //debug run
@@ -371,7 +374,7 @@ double column_model(double RSLR, double kfactor, double bfactor, double tA, doub
 											// layer of an annual band
 	int ab_pointer_sz;
 
-	int end_year = 200;				// the final year	
+	int end_year = 300;				// the final year	
 	// int end_year = 200;				// the final year	
 							// if you change this, check line 631
 							//int runup=end_year-100;
@@ -552,7 +555,7 @@ double column_model(double RSLR, double kfactor, double bfactor, double tA, doub
 
 
 	// SMM 9-sept: calcualte the particle settling velocities explicitly
-	effective_svel = calculate_w_s(particle_diameters[0]);
+	// effective_svel = calculate_w_s(particle_diameters[0]); // NEB july 5, 2024, don't compute, supply
 
 
 	// reset the sea level rise and concnetrations for this run
@@ -659,7 +662,7 @@ double column_model(double RSLR, double kfactor, double bfactor, double tA, doub
 	int low_acc_ratio_counter = 0;
 	int yr = 0;
 	// int runup=end_year-200; //NEB-- must change this if you want a longer run
-	int runup=end_year-100; //NEB-- must change this if you want a longer run
+	int runup=end_year-200; //NEB-- must change this if you want a longer run
 	//while(yr < end_year && dead_biomass_counter < 10 && (accretion_ratio < .99 || accretion_ratio > 1.01 ))
 	//while (yr<end_year && dead_biomass_counter<10)	//MK- I commented out these two lines?
 	while (yr<end_year)
@@ -983,7 +986,7 @@ double column_model(double RSLR, double kfactor, double bfactor, double tA, doub
    	// MK- New function to save time series data
 	ofstream series_out;
 	//all below is NEB hack for clean runs
-	string run_name = "RSR_adjust_constant_SLR_FIXED_PRODUCTIVITY_NO_LITTER"; //"equilibrium_runs";//"test_run_dir"; // This probably aught to be a parm passed in at runtime
+	string run_name = "RSR_adjust_C_diff_plot_single_SLR_low_svel_no_litter"; // This probably aught to be a parm passed in at runtime
 	string output_dir="model_output/" + run_name + "/";
 	string fname2_prefix= output_dir + "RSR_adjust_"; //NEB hack 
 	// string fname2_prefix="series."; //NEB hack 

@@ -163,7 +163,7 @@ int main()
 
 	// these are the parameters for north inlet
 	root_efold = 0.11;
-	// effective_svel = 0.000037;			// UPDATE 9-sept-2011: tke model calcualtes effective settling directly
+	effective_svel = 0.0001;			// UPDATE 9-sept-2011: tke model calcualtes effective settling directly
 	labile_frac = 0.842;
 	silt_frac = 1.0;
 
@@ -174,22 +174,24 @@ int main()
 	// if the biomass is 0, then the model has overshot
 	// so the model increases the SLR by half the value it increased
 	// previously and runs again#
-	double inital_SLR=.002;
+	double inital_SLR=.005;
 	// double inital_SLR=0.02;
-	double SLR_increase = 0.001;
+	double SLR_increase = 0.0002;
 	// double SLR_increase = 0.0005;//0.001;
 
-	const int s_count= 7;
-	double sed_conc_array[s_count] ={0,.005,.01,.02,.03,.04,.05}; // for S2: 1, 5, and 50 mg/L
+	const int s_count= 1;
+	double sed_conc_array[s_count] ={0}; // for S2: 1, 5, and 50 mg/L
+	// double sed_conc_array[s_count] ={0,.005,.01,.02,.03,.04,.05}; // for S2: 1, 5, and 50 mg/L
 	// const int s_count= 2;
 	// double sed_conc_array[s_count] ={.005,.05}; // for S2: 1, 5, and 50 mg/L
 	// const int s_count= 3;
 	// double sed_conc_array[s_count] ={.005,.01,.02}; // for S2: 1, 5, and 50 mg/L
 	// const int a_count=1;
 	// double d_mbm_array[a_count]={2};
-	const int a_count=4;
+	const int a_count=1;
 	// double d_mbm_array[a_count]={1,2,4};
-	double d_mbm_array[a_count]={1,2,3,4};
+	// double d_mbm_array[a_count]={1,2,3,4};
+	double d_mbm_array[a_count]={2};
 	double D_mbm_arg; //NEB addition
 	for(int s=0;s<s_count;s++){
 		for(int a=0;a<a_count;a++){
@@ -214,7 +216,7 @@ int main()
 			// drowning_flag = 1; //reinitialize loop condition
 			// while(drowning_flag > 0){
 				
-				SLR= SLR + SLR_increase;
+				
 
 				// SLR = slr_array[r];
 				cout << endl << " fname: " << fname << endl
@@ -248,10 +250,11 @@ int main()
 				dif = difftime (end,start);
 				cout << "\nruntime was: " << dif << " seconds\n";
 				col_out.close();
+				SLR= SLR + SLR_increase;
 
 			}
 		}
-		inital_SLR=SLR; //experimental optimization
+		// inital_SLR=SLR; //experimental optimization
 
 	}
 
@@ -548,7 +551,7 @@ double column_model(double RSLR, double kfactor, double bfactor, double tA, doub
 
 
 	// SMM 9-sept: calcualte the particle settling velocities explicitly
-	effective_svel = calculate_w_s(particle_diameters[0]);
+	// effective_svel = calculate_w_s(particle_diameters[0]); // NEB: July 5, removing
 
 
 	// reset the sea level rise and concnetrations for this run
@@ -847,7 +850,7 @@ double column_model(double RSLR, double kfactor, double bfactor, double tA, doub
 				// the equation below is divided by 1000 because mortality is calculated in
 				// g/m^2 and deposition is in kg
 				// depo_masses[ carbon_types[i] ] += chi_carbon_types[i]*bm_and_mort[1]/1000;
-				depo_masses[ carbon_types[i] ] += 0*chi_carbon_types[i]*bm_and_mort[1]/1000; //zeroing out shoot contribution
+				depo_masses[ carbon_types[i] ] += 0*chi_carbon_types[i]*bm_and_mort[1]/1000; //zeroing out shoot litter contribution
 			}
 
 			// now deposit the radiogenic species.
@@ -983,7 +986,7 @@ double column_model(double RSLR, double kfactor, double bfactor, double tA, doub
    	// MK- New function to save time series data
 	ofstream series_out;
 	//all below is NEB hack for clean runs
-	string run_name = "equilibrium_get_drowning_low_res_FIXED_PRODUCTIVITY_NO_LITTER"; //"equilibrium_runs";//"test_run_dir"; // This probably aught to be a parm passed in at runtime
+	string run_name = "equilibrium_get_drowning_high_res_FIXED_PRODUCTIVITY_NO_LITTER_low_svel"; //"This probably aught to be a parm passed in at runtime
 	string output_dir="model_output/" + run_name + "/";
 	string fname2_prefix= output_dir + "threshold.slr"; //NEB hack 
 	// string fname2_prefix="series."; //NEB hack 
