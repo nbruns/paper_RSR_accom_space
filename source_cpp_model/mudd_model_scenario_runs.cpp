@@ -197,8 +197,8 @@ int main()
 	 // Figure special additional values 
 	// const int a_count = 3;
 	// double rsr_value_array[a_count] = {1, 2, 4};
-	// const int s_count = 2;
-	// double sed_conc_array[s_count] = {0.005, 0.03};
+	// const int s_count = 3;
+	// double sed_conc_array[s_count] = {0.005, 0.03,.05};
 	
 	// double sed_conc_array[s_count] = {0.02, 0.04};
     
@@ -655,8 +655,8 @@ double column_model(double RSLR, double kfactor, double bfactor, double tA, doub
 	int dead_biomass_counter = 0;
 	int low_acc_ratio_counter = 0;
 	int yr = 0;
-	// int runup=end_year-200; //NEB-- must change this if you want a longer run
-	int runup=end_year-100; //NEB-- must change this if you want a longer run
+	int runup=end_year-200; //NEB-- must bring this in if you want a longer run
+	// int runup=end_year-100; //NEB-- must comment this ou if you want a longer run
 	//while(yr < end_year && dead_biomass_counter < 10 && (accretion_ratio < .99 || accretion_ratio > 1.01 ))
 	//while (yr<end_year && dead_biomass_counter<10)	//MK- I commented out these two lines?
 	while (yr<end_year)
@@ -985,7 +985,7 @@ double column_model(double RSLR, double kfactor, double bfactor, double tA, doub
    	// MK- New function to save time series data
 	ofstream series_out;
 	//all below is NEB hack for clean runs
-	string run_name ="scenario_runs_fig_4_FIXED_PRODUCTIVITY_NO_LITTER_low_svel"; // This probably aught to be a parm passed in at runtime
+	string run_name ="scenario_runs_fig_4_FIXED_PRODUCTIVITY_NO_LITTER_low_svel_300_years"; // This probably aught to be a parm passed in at runtime
 	string output_dir="model_output/" + run_name + "/";
 	string fname2_prefix= output_dir + "series."; //NEB hack 
 	// string fname2_prefix="series."; //NEB hack 
