@@ -14,40 +14,107 @@ knitr::opts_chunk$set(echo = TRUE)
 library(readr)
 library(tidyverse)
 library(patchwork)
-dir_name_c_model <- "~/projects/marsh_column_model-master/"
+dir_name_c_model <- "~/projects/paper_RSR_accom_space/source_cpp_model/"
 dir_name_r_project <- "~/projects/paper_RSR_accom_space/"
 
+theme_set(theme_classic(base_size = 12))
 
-#set theme
-theme_paper_ready <- function(base_size = 14, base_family = "",axis_size_adjust=2) {
-  theme_classic(base_size = base_size, base_family = base_family) +
-    theme(
-      text = element_text(size = base_size),
-      axis.title = element_text(size = base_size + axis_size_adjust),
-      axis.text = element_text(size = base_size),
-      legend.position = "right",
-      legend.title = element_text(size = base_size),
-      legend.text = element_text(size = base_size - 2),
-      plot.title = element_text(size = base_size + 4, face = "bold"),
-      plot.subtitle = element_text(size = base_size)
-    )
-}
 
-# Set the custom theme as the default
-theme_set(theme_paper_ready())
 
 COLOR_SED_LOW <- "#D3D3D3"# "lightgrey"
 COLOR_SED_HIGH <- "#696969"#"darkgrey"
 SED_CONC_LOW <- .005
-# SED_CONC_HIGH <- .05
-SED_CONC_HIGH <- .03
+SED_CONC_HIGH <- .05
 
 RSR_LOW <- 1
 RSR_HIGH <- 4
 ```
 
-```{r load-data}
 
+```{r show-shoots-across-RSR}
+fixed_peak_productivity <- 3*2500
+
+RSR_shoots_tibble <- tibble(RSR=1:9) %>% 
+  mutate(shoots=fixed_peak_productivity/(RSR+1)) 
+
+RSR_shoots_tibble %>% 
+  filter(RSR %in% c(1,2,4)) %>% 
+  mutate(shoots - lead(shoots))
+  
+RSR_shoots_tibble %>% 
+  ggplot(aes(x=RSR,y=shoots)) +
+  geom_vline(xintercept  =1,color="green") +
+  geom_vline(xintercept = 2,color="black") +
+  geom_vline(xintercept  =4,color="brown") +
+  geom_point() +
+  # scale_x_log10() +
+  ylab("shoot biomass (g/m^2)") +
+  xlab("root:shoot") +
+  ggtitle("shoots = (total productivity) / (RSR +1) ")
+           
+```
+
+```{r demonstrate-parabola-function}
+## this is not fig 1, this just shows the parabola controlling roots, shoots, 
+#and total production as a function of inundation depth
+
+tA <- .5
+mudd_parms <-list(
+  Temp=0,
+  B_max=2500,
+  B_min=0,
+  D_min=0,
+  D_max=-(0.0406-0.6663*tA*2),
+  q=0.0018,
+  k=1.5*10^-5,
+  jd_ps=213,
+  total_productivity=7500
+  
+)
+
+
+
+mudd_parms
+compute_parabola_fixed_biomass <- function(D, parms,RSR) {
+  if(D > parms$D_max || D < parms$D_min) {
+    return(0)
+  }
+  
+  rsr_adjusted_peak_biomass <- parms$total_productivity / (1 +RSR)
+    
+  a <- 4 * rsr_adjusted_peak_biomass/ (parms$D_max - parms$D_min)^2
+  y <- -a * (D - parms$D_min) * (D - parms$D_max)
+  
+  return(y)
+}
+
+
+
+expand_grid(depth=seq(0,.7,by=.005),RSR=c(1,2,4)) %>%
+  ## BUT BELOW IS ALL THE CHOICES
+# expand_grid(depth=seq(0,.7,by=.005),RSR=c(1/1:10,1:10)) %>% 
+  rowwise() %>%
+  mutate(shoots=compute_parabola_fixed_biomass(depth,mudd_parms,RSR=RSR)
+         )   %>% 
+  mutate(roots=shoots*RSR) %>% 
+  mutate(total_prod=shoots+roots) %>% 
+  pivot_longer(c(shoots,roots,total_prod)) %>% 
+  ggplot(aes(x=depth,y=value)) +
+  geom_line(aes(color=as.factor(RSR),group=RSR)) +
+    facet_wrap(~name) +
+  scale_color_manual(values=c("green","black","brown"),"root:shoot") +
+  ylab(NULL)
+
+```
+
+
+
+```{r reproduce-k-mud-fig-3}
+## to reproduce the kirwan and mudd figures:
+  ## 1) compile code, e.g.
+        # g++ -std=c++11 seriesSLRtke_muddedit_BASELINE.cpp -o baseline_executable
+  ## 2) run code, ./baseline_executable
+  ## 3) run below script to load results and make figurs
 series_column_names <-c("Yr", "MHT", "Elevation", "Biomass", 
                         "Silt", "Ref", "Lab","extra_column")
 
@@ -59,31 +126,65 @@ file_name_vec <- c("series.00.txt", "series.01.txt", "series.10.txt", "series.11
 
 run_string_vec <- c("00","01","10","11")
 
+dir_name_c_model <- "~/projects/paper_RSR_accom_space/source_cpp_model/"
+
+#####
+## not sure what this was for
+####
+
 all_runs <- tibble()
 for(cur_run_string in run_string_vec ){
   cur_file_name <- paste0("series.",cur_run_string,".txt")
-    
+
   cur_data <- read_delim(
-    paste0(dir_name_c_model,cur_file_name), 
-    delim = " ", 
+    paste0(dir_name_c_model,cur_file_name),
+    delim = " ",
     col_names = series_column_names,
-    trim_ws = TRUE) %>% 
-    select(-extra_column) %>% 
-    mutate(Yr=Yr+2010) %>% 
+    trim_ws = TRUE) %>%
+    select(-extra_column) %>%
+    mutate(Yr=Yr+2010) %>%
     mutate(run_code=cur_run_string)
-   
-  
-  all_runs <- bind_rows(all_runs,cur_data) 
+
+
+  all_runs <- bind_rows(all_runs,cur_data)
 }
 
-all_runs %>% glimpse()
+plot_name_tibble <- tribble(
+    ~run_code,~plot_name,
+    "00", "neither",
+    "01", "+prod",
+    "10","+decomp",
+    "11","+both"
+  )
+
+fig_3_data <- all_runs %>% 
+  filter(run_code %in% c("00","11")) %>% 
+     mutate(Accretion_rate_mm_yr=Elevation- lag(Elevation)) %>%
+    mutate(Accretion_rate_mm_yr=Accretion_rate_mm_yr*1000) %>% 
+    mutate(total_carbon=Lab + Ref) %>% 
+   mutate(CAR_g_yr=total_carbon - lag(total_carbon)) %>% 
+   mutate(CAR_g_yr=CAR_g_yr*1000)  %>% 
+    # mutate(Yr=1900+Yr) %>% 
+    filter(Yr>2020) %>% 
+  left_join(plot_name_tibble)
 
 
-```
+fig_3_left_panel <- fig_3_data %>% 
+  ggplot(aes(x=Yr,y=CAR_g_yr)) +
+  geom_line(aes(color=plot_name)) +
+  scale_color_manual(values=c("red","darkgreen"),"warming sensitivty") +
+  ylab("organic matter accumulation rate (g/yr)") +
+  
+
+fig_3_right_panel <- fig_3_data %>% 
+  ggplot(aes(x=Yr,y=Accretion_rate_mm_yr)) +
+  geom_line(aes(color=plot_name)) +
+  scale_color_manual(values=c("red","darkgreen"),"warming sensitivty") +
+  ylab("accretion rate (mm/yr)")
 
 
-```{r reproduce-k-mud-fig-3}
-
+fig_3_left_panel |
+  fig_3_right_panel
 # scenario_plot_CAR <- 
   
 # scenario_plot_accretion <-
@@ -92,10 +193,9 @@ all_runs %>% glimpse()
   
 ```
 
+```{r fig-S1-LOAD-DATA}
 
-
-```{r fig-1-rsr-adjust-LOAD-DATA}
-dir_name_fig_2_results <- "RSR_adjust_constant_SLR"
+dir_name_fig_2_results <- "constant_SLR_single_runs_FIXED_PRODUCTIVITY_NO_LITTER_low_svel"
 run_dir_full_name<- paste0("../source_cpp_model/model_output/", dir_name_fig_2_results,"/")
                        
 series_column_names_NO_ACRETION <-c("Yr", "MHT", "Elevation", "Biomass", 
@@ -106,6 +206,184 @@ series_column_names_NO_ACRETION <-c("Yr", "MHT", "Elevation", "Biomass",
   # run_string_vec <- c( "0.000", "0.001", "0.005", "0.050")
   rsr_adjust_file_names <- list.files(run_dir_full_name)
  
+   SLR_pattern <- "SLR_([0-9.]+)\\_" # regex for extracting SLR rate
+ 
+      sed_pattern <-  "conc_([0-9.]+)\\.txt"
+   rsr_pattern <- "RSR_([0-9.]+)\\_" # regex for extracting SLR rate
+ 
+   
+single_runs <- tibble()
+  for(cur_file_name in list.files(run_dir_full_name)){
+    # cur_file_name <- equilibrium_run_files[4] #run name
+    # slr_rate <- str_extract(cur_file_name, pattern) %>%  
+   # cur_file_name <- rsr_adjust_file_names[2]
+    
+       cur_sed_conc <- str_extract(cur_file_name, sed_pattern) %>%
+      str_extract("[0-9]+\\.[0-9]+") %>% as.numeric()
+    print(cur_sed_conc)
+    
+    cur_rsr <-  str_extract(cur_file_name, rsr_pattern) %>%
+      str_extract("[0-9.]+")  %>%
+      as.numeric()  
+    
+     
+    print(cur_rsr)
+  
+    cur_SLR <-  str_extract(cur_file_name, SLR_pattern) %>%
+      str_extract("[0-9.]+")  %>% 
+      # substr(1, nchar(.) - 1) %>%  
+      as.numeric()
+    
+    cur_data <- read_delim(
+      paste0(run_dir_full_name,cur_file_name),
+      delim = " ", 
+      col_names = series_column_names_NO_ACRETION,
+      trim_ws = TRUE) %>% 
+      select(-extra_column) %>% 
+      # mutate(Yr=Yr+2010) %>%
+        # filter(Yr>1980) %>%
+      mutate(sed_conc=cur_sed_conc,
+             SLR=cur_SLR,
+             RSR=cur_rsr)
+    
+    cur_data <- cur_data %>% 
+        mutate(accretion_mm_yr=Elevation-lag(Elevation)) %>% 
+        mutate(accretion_mm_yr=accretion_mm_yr*1000) %>% 
+        mutate(silt_deposition_kg_yr=Silt - lag(Silt)) %>% 
+        mutate(depth=MHT-Elevation) %>% 
+        mutate(total_C=Ref+Lab) %>% 
+        mutate(CAR_kg_yr=total_C - lag(total_C)) 
+        
+    single_runs <- bind_rows(single_runs,cur_data) 
+  }
+ 
+  
+  glimpse(single_runs)
+
+  single_runs %>% pull(RSR) %>% table()
+  single_runs %>% pull(sed_conc) %>% table()
+  single_runs %>% 
+    filter(sed_conc==.005) %>% 
+    filter()
+```
+
+
+```{r fig-S1}
+#plot_value
+innards_SLR <- .016
+plot_innards_parm <- function(input_data, sed_conc_arg, depth_max = .8, title_string = NULL, y_lab_arg, ylim_arg = NULL) {
+  plot <- input_data %>% 
+    filter(depth < depth_max) %>% 
+    filter(SLR == innards_SLR) %>% 
+    filter(sed_conc == sed_conc_arg) %>%
+    filter(RSR %in% c(1, 2, 4)) %>% 
+    ggplot(aes(x = depth, y = plot_value, color = as.factor(RSR), group = RSR)) +
+    geom_line() +
+    scale_color_manual(
+      values = c("darkgreen", "black", "brown"), 
+      labels = c("1" = "halving (RSR=1)","2"="baseline (RSR=2)", "4" = "doubling (RSR=4)"),
+      "root:shoot ratio") +
+    ylab(y_lab_arg) +
+    ggtitle(title_string) +
+    xlab("Inundation depth (m)")
+  
+  # Add ylim if ylim_arg is not NULL
+  if (!is.null(ylim_arg)) {
+    plot <- plot + ylim(ylim_arg)
+  }
+  
+  return(plot)
+}
+
+# Example usage
+# plot_innards_parm(your_data, 0.005, title_string = "Example Plot", y_lab_arg = "Y Axis Label", ylim_arg = c(0, 10))
+
+
+SED_CONC_HIGH_here <- .05
+accretion_low <- single_runs %>%  mutate(plot_value=accretion_mm_yr) %>% 
+  plot_innards_parm(SED_CONC_LOW,
+                    # y_lab="accretion rate (mm/yr)",
+                    y_lab=expression("Accretion rate (mm yr"^-1*")"),
+                    title_string = "sed conc: 5 mg/L",
+                    ylim_arg=c(2,7))
+
+accretion_high <- single_runs %>%  mutate(plot_value=accretion_mm_yr) %>% 
+  plot_innards_parm(SED_CONC_HIGH_here,
+                    y_lab=expression("Accretion rate (mm yr"^-1*")"),
+                    title_string = "sed conc: 50 mg/L",
+                    ylim_arg=c(7.5,13.5))
+
+som_low <- single_runs %>%  mutate(plot_value=CAR_kg_yr*1000*.44) %>% 
+  plot_innards_parm(SED_CONC_LOW,
+                    y_lab=expression("C accumulation (g m"^-2*yr^-1*")"),
+                    ylim_arg = c(0,3*1000*.44))
+
+som_high <- single_runs %>%  mutate(plot_value=CAR_kg_yr*1000*.44) %>% 
+  plot_innards_parm(SED_CONC_HIGH_here,
+                    y_lab=expression("C accumulation (g m"^-2*yr^-1*")"),
+                    ylim_arg = c(0,3*1000*.44))
+
+
+silt_deposition_high <- single_runs %>%  mutate(plot_value=silt_deposition_kg_yr) %>% 
+  plot_innards_parm(SED_CONC_HIGH_here,
+                     y_lab=expression("Sediment deposition (kg yr"^-1*")"),
+                    ylim_arg =c(6,17) )
+
+silt_deposition_low <- single_runs %>%  mutate(plot_value=silt_deposition_kg_yr) %>% 
+  plot_innards_parm(SED_CONC_LOW,
+                     y_lab=expression("Sediment deposition (kg yr"^-1*")"),
+                    ylim_arg = c(1,2))
+
+
+
+(accretion_low | accretion_high) /
+  (som_low | som_high) /
+  (silt_deposition_low | silt_deposition_high) +
+       plot_layout(guides = 'collect')
+
+```
+
+
+
+```{r fig-1}
+single_runs_with_ROOTS_SHOOT <- single_runs %>% 
+    rename(shoots = Biomass) %>% 
+    mutate(roots = shoots * RSR) 
+
+
+plot_shoots <- single_runs_with_ROOTS_SHOOT %>%  
+  mutate(plot_value = shoots) %>% 
+  plot_innards_parm(SED_CONC_HIGH, y_lab_arg = expression("shoot biomass (g m"^-2*")"))
+
+
+plot_roots <- single_runs_with_ROOTS_SHOOT %>%  
+  mutate(plot_value = roots) %>% 
+  plot_innards_parm(SED_CONC_HIGH, y_lab_arg = expression("root biomass (g m"^-2*")"))
+
+plot_productivity <- single_runs_with_ROOTS_SHOOT %>%  
+  mutate(plot_value = roots + shoots) %>% 
+  plot_innards_parm(SED_CONC_HIGH, y_lab_arg = expression("total productivity (g m"^-2*")"))
+
+plot_shoots / plot_roots / plot_productivity +
+  plot_layout(guides = 'collect')
+
+
+```
+
+
+
+
+```{r fig-2-rsr-adjust-LOAD-DATA}
+dir_name_fig_2_results <-
+  "RSR_adjust_C_diff_plot_single_SLR_low_svel_no_litter"
+run_dir_full_name<- paste0("../source_cpp_model/model_output/", dir_name_fig_2_results,"/")
+                       
+series_column_names_NO_ACRETION <-c("Yr", "MHT", "Elevation", "Biomass", 
+                          "Silt", "Ref", "Lab","extra_column")
+  
+
+  rsr_adjust_file_names <- list.files(run_dir_full_name)
+ 
    SLR_pattern <- "SLR_([0-9.]+)\\.txt" # regex for extracting SLR rate
    sed_pattern <- "sed_([0-9.]+)\\_" # regex for extracting SLR rate
    rsr_pattern <- "(?<=RSR2_)[0-9.]+" #"RSR2_([0-9.]+)\\_" # regex for extracting SLR rate
@@ -113,16 +391,11 @@ series_column_names_NO_ACRETION <-c("Yr", "MHT", "Elevation", "Biomass",
    
 RSR_adjust_tibble <- tibble()
   for(cur_file_name in list.files(run_dir_full_name)){
-    # cur_file_name <- equilibrium_run_files[4] #run name
-    # slr_rate <- str_extract(cur_file_name, pattern) %>%  
-   # cur_file_name <- rsr_adjust_file_names[2]
     cur_sed_conc <- str_extract(cur_file_name, sed_pattern) %>%
       str_extract("[0-9.]+")  %>% 
       as.numeric()
    
     cur_rsr <-  str_extract(cur_file_name, rsr_pattern) %>%
-    # str_extract(cur_file_name, rsr_pattern) %>%
-      # str_extract("[0-9.]+")  %>% 
       as.numeric() 
       
     print(cur_rsr)
@@ -147,84 +420,27 @@ RSR_adjust_tibble <- tibble()
     cur_data <- cur_data %>% 
         mutate(accretion_mm_yr=Elevation-lag(Elevation)) %>% 
         mutate(accretion_mm_yr=accretion_mm_yr*1000) %>% 
-        mutate(silt_deposition_g_yr=Silt - lag(Silt)) %>% 
+        mutate(silt_deposition_kg_yr=Silt - lag(Silt)) %>% 
         mutate(depth=MHT-Elevation) %>% 
         mutate(total_C=Ref+Lab) %>% 
-        mutate(CAR_g_yr=total_C - lag(total_C)) 
+        mutate(CAR_kg_yr=total_C - lag(total_C)) 
         
     RSR_adjust_tibble <- bind_rows(RSR_adjust_tibble,cur_data) 
   }
  
   
   glimpse(RSR_adjust_tibble)
+  
+  RSR_adjust_tibble<- RSR_adjust_tibble %>% 
+    mutate(roots=Biomass*RSR) %>% 
+    mutate(roots=ifelse(Yr>100,roots,Biomass*2)) 
 
   RSR_adjust_tibble %>% pull(RSR) %>% table()
   RSR_adjust_tibble %>% pull(sed_conc) %>% table()
 ```
 
-```{r fig-1-rsr-adjust-MAKE-PLOT-FULL}
-# recquires RSR_adjust_tibble
 
-
-fig_1_make_plot <- function(results_tibble_arg,slr_arg){
-  
-  low_sed <- results_tibble_arg %>% 
-    # filter(rsr %in% c(1,3)) %>% 
-    filter(RSR %in% c(RSR_LOW,RSR_HIGH)) %>% 
-    filter(sed_conc==SED_CONC_LOW) %>% 
-    
-    select(
-     Yr,sed_conc,SLR,
-     RSR,
-     accretion_mm_yr,CAR_g_yr,Biomass,depth,silt_deposition_g_yr
-    ) %>% 
-    filter(Yr>50) %>% 
-    filter(SLR==slr_arg) %>% 
-    pivot_longer(-c(Yr,sed_conc,SLR,RSR)) %>% 
-    ggplot(aes(x=Yr,y=value,group=as.factor(RSR),color=as.factor(RSR))) +
-    geom_line() +
-    # facet_grid(name~sed_conc,scales = "free_y") +
-    facet_wrap(~name,scales = "free_y",ncol=1) +
-    scale_color_manual(values= c("darkgreen","brown"),"root:shoot ratio") +
-    ggtitle(paste0("SLR: ",slr_arg,", sed: 5 mg/L")) +
-    ylab(NULL)
-    # ggplot(aes(x=Yr,y=))
-   # low_sed 
-   
-  high_sed <- results_tibble_arg %>% 
-      # filter(rsr %in% c(1,3)) %>% 
-      filter(RSR %in% c(RSR_LOW,RSR_HIGH)) %>% 
-    filter(sed_conc==SED_CONC_HIGH) %>% 
-    select(
-     Yr,sed_conc,SLR,
-     RSR,
-     accretion_mm_yr,CAR_g_yr,Biomass,depth,silt_deposition_g_yr
-    ) %>% 
-    filter(Yr>50) %>% 
-    filter(SLR==slr_arg) %>% 
-    pivot_longer(-c(Yr,sed_conc,SLR,RSR)) %>% 
-    ggplot(aes(x=Yr,y=value,group=as.factor(RSR),color=as.factor(RSR))) +
-    geom_line() +
-    # facet_grid(name~sed_conc,scales = "free_y") +
-    facet_wrap(~name,scales = "free_y",ncol=1) +
-    scale_color_manual(values= c("darkgreen","brown"),"root:shoot ratio") +
-    ylab(NULL)+
-    ggtitle(paste0("SLR: ",slr_arg,", sed: ",SED_CONC_HIGH*1000, "mg/L")) 
-    # ggplot(aes(x=Yr,y=))
-   (low_sed  | high_sed) + plot_layout(guides = 'collect')
-   
-}
-
-
-# fig_1_make_plot (RSR_adjust_tibble,.003) 
-fig_1_make_plot (RSR_adjust_tibble,.01)  # .0125 is interesting-- as pct car on decrease is same
-# fig_1_make_plot (RSR_adjust_tibble,.001) 
- 
- 
-```
-
-
-```{r fig-1-rsr-adjust-MAKE-PLOT-SIMPLE}
+```{r fig-2-MAKE-PLOT}
 # recquires RSR_adjust_tibble
 
 rsr_adjust_plot_ACCRETION <- function(results_tibble,slr_arg,sed_conc_arg){
@@ -237,9 +453,16 @@ rsr_adjust_plot_ACCRETION <- function(results_tibble,slr_arg,sed_conc_arg){
     geom_line() +
     geom_line(data = . %>% filter(Yr<100),color="black") +
     # scale_color_manual(values= c("darkgreen","black","brown"),"root:shoot ratio") +
-    scale_color_manual(values= c("darkgreen","black","brown"),"root:shoot ratio") +
-    ggtitle(paste0("SLR: ",slr_arg,", sed: ",sed_conc_arg ,"mg/L")) +
-    ylab("accretion rate (mm/yr)")
+    scale_color_manual(
+      values= c("darkgreen","black","brown"),
+                        labels =  c("1" = "halving (RSR=1)",
+                                    "2"="baseline (RSR=2)", 
+                                    "4" = "doubling (RSR=4)"),
+                         "root:shoot ratio") +
+    # ggtitle(paste0("SLR: ",slr_arg,", sed: ",sed_conc_arg*1000 ,"mg/L")) +
+    # ggtitle(expression("SSC: ",sed_conc_arg*1000 ,"mg/L")) +
+      ggtitle(bquote("SSC:" ~ .(sed_conc_arg * 1000) ~ "mg L"^-1)) +
+      ylab(expression("Accretion rate (mm yr"^-1*")")) 
 }
 
  rsr_adjust_plot_CAR <- function(results_tibble,slr_arg,sed_conc_arg){
@@ -249,13 +472,20 @@ rsr_adjust_plot_ACCRETION <- function(results_tibble,slr_arg,sed_conc_arg){
     filter(sed_conc==sed_conc_arg) %>% 
     filter(Yr>50) %>% 
     filter(SLR==slr_arg) %>% 
-    ggplot(aes(x=Yr,y=CAR_g_yr,group=as.factor(RSR),color=as.factor(RSR))) +
+    ggplot(aes(x=Yr,y=CAR_kg_yr*.44*1000,group=as.factor(RSR),color=as.factor(RSR))) +
     geom_line() +
     geom_line(data = . %>% filter(Yr<100),color="black") +
     # scale_color_manual(values= c("darkgreen","black","brown"),"root:shoot ratio") +
-    scale_color_manual(values= c("darkgreen","black","brown"),"root:shoot ratio") +
+    scale_color_manual(
+            values= c("darkgreen","black","brown"),
+                        labels =  c("1" = "halving (RSR=1)",
+                                    "2"="baseline (RSR=2)", 
+                                    "4" = "doubling (RSR=4)"),
+                         "root:shoot ratio") +
     # ggtitle(paste0("SLR: ",slr_arg,", sed: 5 mg/L")) +
-    ylab("organic matter accumulation (g/yr)")
+    # ylab("organic matter accumulation (g/yr)")
+     ylab(expression("C accumulation (g m"^-2*yr^-1*")")) 
+
 }
 
 make_fig_1_SIMPLE <- function(slr_arg){
@@ -285,61 +515,105 @@ make_fig_1_SIMPLE <- function(slr_arg){
 }
 
 make_fig_1_SIMPLE(.01)
+make_fig_1_SIMPLE(.0025)
 ```
 
+```{r compute-impulse-size}
+  RSR_adjust_tibble %>% glimpse()
+  
+RSR_adjust_tibble %>% 
+  filter(SLR==.0025) %>% 
+  filter(sed_conc==.005) %>% 
+  filter(Yr < 102) %>% 
+  filter(Yr > 98) %>% 
+  select(Yr, accretion_mm_yr,RSR) %>% 
+  pivot_wider(names_from = RSR,values_from = accretion_mm_yr,names_prefix = "RSR_")%>% 
+  filter(Yr==101) %>% 
+  mutate(impulse_respone_double= RSR_4 - RSR_2) %>% 
+  mutate(impulse_response_half=RSR_1 - RSR_2) %>% 
+  glimpse()
 
 
-```{r fig-2-delta-C-MAKE-DATA}
+# $ Yr                     <dbl> 101
+# $ RSR_1                  <dbl> 0.47
+# $ RSR_2                  <dbl> 2.29
+# $ RSR_4                  <dbl> 3.74
+# $ impulse_respone_double <dbl> 1.45
+# $ impulse_response_half  <dbl> -1.82
+# 
+# 
+
+```
+
+```{r fig-3-delta-C-MAKE-DATA}
 #could load these 1 at a time and make table, so I could sweep a larger set
 compute_delta_C <- function(sed_conc_arg,slr_arg,RSR_change_arg){
   low_RSR <- 1 #could make this an arg
   
-  # sed_conc_arg <- .05
-  # slr_arg <- .01
-  
-  
+
   cur_run <- RSR_adjust_tibble %>% 
     filter(sed_conc==sed_conc_arg) %>% 
     filter(SLR==slr_arg) %>% 
-    filter(rsr %in% c(1,RSR_change_arg)) 
+    filter(RSR %in% c(1,RSR_change_arg)) 
   
   baseline_year <- 99 
   final_year <- 199
   baseline_CAR <- cur_run %>%
   # cur_run %>% 
     filter(Yr==baseline_year) %>% 
-    filter(rsr==low_RSR) %>% #they are identical, so just grab the first
-    pull(CAR_g_yr)
+    filter(RSR==low_RSR) %>% #they are identical, so just grab the first
+    pull(CAR_kg_yr)
   
   final_CAR<- cur_run %>%
   # cur_run %>%
-    filter(rsr==RSR_change_arg) %>% 
+    filter(RSR==RSR_change_arg) %>% 
     filter(Yr==final_year) %>% 
-    pull(CAR_g_yr)
+    pull(CAR_kg_yr)
     
   
   (final_CAR- baseline_CAR)/baseline_CAR
 }
 
 
+compute_delta_C_v2 <- function(sed_conc_arg,slr_arg,RSR_change_arg){
+  ##in v2, don't use car at time 0, 
+  # instead use the no-adjust at t 199 as the baseline
+  
+  low_RSR <- 1 #could make this an arg
+  cur_run <- RSR_adjust_tibble %>% 
+    filter(sed_conc==sed_conc_arg) %>% 
+    filter(SLR==slr_arg) %>% 
+    filter(RSR %in% c(1,2,RSR_change_arg)) 
+  
+  baseline_year <- 99 
+  final_year <- 199
+  baseline_CAR <- cur_run %>%
+    filter(Yr==final_year) %>% 
+    filter(RSR==2) %>% #they are identical, so just grab the first
+    pull(CAR_kg_yr)
+  
+  final_CAR<- cur_run %>%
+    filter(RSR==RSR_change_arg) %>% 
+    filter(Yr==final_year) %>% 
+    pull(CAR_kg_yr)
+    
+  
+  (final_CAR- baseline_CAR)/baseline_CAR
+}
+
 slr_vec <- RSR_adjust_tibble %>% pull(SLR) %>% unique() %>% as.numeric()
 sed_conc_vec <- RSR_adjust_tibble %>% pull(sed_conc) %>% unique() %>% as.numeric()
-RSR_vec <- RSR_adjust_tibble %>% pull(rsr) %>% unique() %>% as.numeric()
+RSR_vec <- RSR_adjust_tibble %>% pull(RSR) %>% unique() %>% as.numeric()
 
 fig_2_tibble <- tibble()
 for(cur_slr in slr_vec){
   for(cur_sed_conc in sed_conc_vec){
     for(cur_RSR in RSR_vec){
-      # cur_sed_conc <- sed_conc_vec[1]
-      # cur_slr <- slr_vec[1]
-      # cur_RSR <- RSR_vec[1]
-      
-       cur_delta_c_pcnt <- compute_delta_C(
+
+       cur_delta_c_pcnt <- compute_delta_C_v2(
          sed_conc_arg = cur_sed_conc,
          slr_arg =  cur_slr,
-         RSR_change_arg= cur_RSR)
-       
-       
+         RSR_change_arg= cur_RSR)*100
        
        cur_row <- tibble(delta_c_pcnt=cur_delta_c_pcnt,
                          sed_conc=cur_sed_conc,
@@ -351,76 +625,59 @@ for(cur_slr in slr_vec){
   }
 }
 
-fig_2_tibble %>% glimpse()
 
 ```
 
-```{r fig-2-delta-C-MAKE-PLOT}
 
-fig_2_tibble %>% 
-  pull(SLR) %>% 
-  unique()
 
-slr_vec <- c(.001,.0025,.0050,.0075,.01,.0125,.015,.2)
-fig_2_tibble %>% 
-  filter(SLR %in% slr_vec)   %>% 
-  filter(RSR %in% c(RSR_LOW,RSR_HIGH)) %>% 
-  filter(sed_conc %in% c(SED_CONC_LOW,SED_CONC_HIGH)) %>%
-  filter(!(sed_conc == SED_CONC_LOW & SLR >= 0.015)) %>%  # Additional filter condition
-  mutate(SLR_mm_yr =SLR*1000) %>% 
-  mutate(sed_conc_mg_l=sed_conc*1000) %>% 
-  ggplot(aes(x = SLR_mm_yr, y = delta_c_pcnt, color = as.factor(sed_conc_mg_l), group = interaction(sed_conc_mg_l, RSR))) +
+```{r fig-3-delta-C-left-panel-MAKE-PLOT}
+
+custom_palette <- c("1" = "darkgreen", "2" = "black", "4" = "brown")
+
+fig_slr <- .0025
+slr_string <- paste0("SLR: ", fig_slr*1000, " mm/yr")
+
+CAR_dif_across_SSC_fig <- fig_2_tibble %>% 
+  filter(SLR == fig_slr) %>% 
+  filter(RSR %in% c(1, 4)) %>% 
+  ggplot(aes(x = sed_conc * 1000, y = delta_c_pcnt, group = RSR, color = as.factor(RSR))) +
   geom_point() +
   geom_line() +
   geom_hline(yintercept = 0) +
-  labs(color = "Sed. Conc. (mg/L)") +  # Optionally add a label for the legend
-  # scale_color_brewer(palette = "Set1") +
-  scale_color_manual(values = c(COLOR_SED_LOW,COLOR_SED_HIGH)) +
-  ylab("% change in organic matter accumulation rate") +
-  xlab("sea level rise rate (mm/yr)") +
-  theme_classic()
+  labs(color = "root:shoot treatment") +
+  ylab("% change in C accumulation rate") +
+  xlab(expression("SSC (mg L"^-1*")")) +
+  scale_color_manual(
+    values = custom_palette, 
+    labels = c("1" = "halving (RSR=1)", "4" = "doubling (RSR=4)")
+  ) +
+  # ggtitle(slr_string) +
+  ggtitle(bquote("SLR: " ~ .(fig_slr * 1000) ~ "mm yr"^-1)) +
+  scale_y_continuous(breaks = seq(
+      floor(min(fig_2_tibble$delta_c_pcnt)), 
+      ceiling(max(fig_2_tibble$delta_c_pcnt)), 
+      by = 5)) 
 
 
-```
-
-```{r fig-2-delta-C-ALT-VIEW}
-fig_2_tibble %>% 
-  # filter(SLR %in% )
-  filter(SLR !=.003) %>% 
-  filter(delta_c_pcnt>-.5) %>% 
-  filter(RSR %in% c(RSR_LOW,RSR_HIGH)) %>% 
-  # ggplot(aes(x = sed_conc, y = delta_c_pcnt, color = as.factor(SLR), group = interaction(SLR, RSR))) +
-  ggplot(aes(x = sed_conc, y = delta_c_pcnt, color = SLR, group = interaction(SLR, RSR))) +
-  geom_point() +
-  geom_line() +
-  geom_hline(yintercept = 0) +
-  # labs(color = "Sed. Conc. (mg/L)") +  # Optionally add a label for the legend
-  labs(color = "SLR (m/yr)") +  # Optionally add a label for the legend
-  # scale_color_brewer(palette = "Set1")
-  scale_color_viridis_c()
 
 ```
+
+
 
 ```{r fig-3-threshold-SLR-LOAD-DATA}
-find_slr_results <- "equilibrium_get_drowning_slr" #"dev_out"
+find_slr_results <- "equilibrium_get_drowning_high_res_FIXED_PRODUCTIVITY_NO_LITTER_low_svel" #"dev_out"
 run_dir_full_name<- paste0("../source_cpp_model/model_output/",
                            find_slr_results,"/")
                        
 series_column_names_NO_ACRETION <-c("Yr", "MHT", "Elevation", "Biomass", 
                           "Silt", "Ref", "Lab","extra_column")
   
-
-  # run_string_vec <- c("00","01","10","11")
-  # run_string_vec <- c( "0.000", "0.001", "0.005", "0.050")
- 
    sed_pattern <-  "conc_([0-9.]+)\\.txt"
    rsr_pattern <- "RSR_([0-9.]+)\\_" # regex for extracting SLR rate
  
    
 get_slr_tibble <- tibble()
   for(cur_file_name in list.files(run_dir_full_name)){
-    # cur_file_name <- equilibrium_run_files[4] #run name
-    # slr_rate <- str_extract(cur_file_name, pattern) %>%  
     cur_sed_conc <- str_extract(cur_file_name, sed_pattern) %>%
       str_extract("[0-9]+\\.[0-9]+") %>% as.numeric()
     print(cur_sed_conc)
@@ -444,10 +701,10 @@ get_slr_tibble <- tibble()
     cur_data <- cur_data %>% 
         mutate(accretion_mm_yr=Elevation-lag(Elevation)) %>% 
         mutate(accretion_mm_yr=accretion_mm_yr*1000) %>% 
-        mutate(silt_deposition_g_yr=Silt - lag(Silt)) %>% 
+        mutate(silt_deposition_kg_yr=Silt - lag(Silt)) %>% 
         mutate(depth=MHT-Elevation) %>% 
         mutate(total_C=Ref+Lab) %>% 
-        mutate(CAR_g_yr=total_C - lag(total_C))  %>% 
+        mutate(CAR_kg_yr=total_C - lag(total_C))  %>% 
         mutate(SLR=MHT-lag(MHT)) %>% 
       mutate(SLR=round(SLR*1000)) %>% 
       filter(Yr>10) 
@@ -460,45 +717,90 @@ get_slr_tibble <- tibble()
   get_slr_tibble %>% 
   select(rsr,SLR) %>% table()
  
+  
 ```
 
-```{r fig-3-threshold-SLR-MAKE-FIGURE}
- 
-custom_palette <- viridisLite::viridis(4)
-custom_palette[4] <- "#D55E00"#"green"  # Change the color for factor level 4
+
+```{r inspect-threshold-results}
+custom_palette <- c("green","black","brown")
+
 
 get_slr_tibble %>% 
-  filter(Yr == 200) %>% 
-  ggplot(aes(x = sed_conc, y = SLR, color = as.factor(rsr))) +
+  filter(Yr<200) %>% 
+  ggplot(aes(x=Yr,y=CAR_kg_yr,color=as.factor(rsr),group=rsr)) +
+  geom_line() +
+  facet_wrap(~sed_conc) +
+    scale_color_manual(values = custom_palette, name = "RSR") 
+
+get_slr_tibble %>% 
+  filter(Yr<200) %>% 
+  ggplot(aes(x=Yr,y=accretion_mm_yr,color=as.factor(rsr),group=rsr)) +
+  geom_line() +
+  facet_wrap(~sed_conc) +
+    scale_color_manual(values = custom_palette, name = "RSR") 
+
+
+```
+
+
+
+```{r fig-4-threshold-slr-right-panel-MAKE-PLOT}
+cut_year <- 180 
+
+threshold_plot <- get_slr_tibble %>%
+  filter(Yr<cut_year) %>%
+  group_by(rsr,sed_conc) %>%
+  summarise(peak_acc=max(accretion_mm_yr)) %>% 
+  ungroup() %>% 
+  filter(sed_conc>0) %>%  
+  ggplot(aes(x = sed_conc*1000, y = peak_acc, color = as.factor(rsr))) +
   geom_point() +
   geom_line() +
-  ylab("threshold SLR (mm/yr)") +
-  xlab("sediment concentration (mg/L)") +
-  scale_color_manual(values = custom_palette, name = "RSR") +
-  labs(title="the impact or root:shoot ratio on threshold SLR" ,
-  subtitle = "across sediment concentrations (mg/L)")
- 
-  # ggplot(aes(x=sed_conc,y=SLR))
+  ylab(expression("Threshold SLR (mm yr"^-1*")")) +
+  xlab(expression("SSC (mg L"^-1*")")) +
+  scale_color_manual(values = custom_palette, name = "RSR") 
+  
 ```
 
-```{r fig-3-zoom-in-on-each}
-get_slr_tibble %>% 
-  filter(Yr==200) %>% 
-  mutate(sed_conc_mg_l=sed_conc*1000) %>% 
-  # ggplot(aes(x=sed_conc,y=SLR,color=as.factor(rsr))) +
-  ggplot(aes(x=rsr,y=SLR)) +
-  geom_point() +
-  facet_wrap(~sed_conc_mg_l,scales = "free_y",ncol=1) +
-  ylab("threshold SLR (mm/yr)") +
-  xlab("root:shoot") +
-  labs(title="the impact or root:shoot ratio on threshold SLR" ,
-  subtitle = "across sediment concentrations (mg/L)")
- 
+```{r effects-plot}
+threshold_plot <- threshold_plot + theme(legend.position = "none")
+
+CAR_dif_across_SSC_fig | threshold_plot 
+```
+
+```{r find-threshold-change-.05}
+cut_year <- 180 
+
+##just insperct for .05
+get_slr_tibble %>%
+  filter(Yr<cut_year) %>%
+  group_by(rsr,sed_conc) %>%
+  summarise(peak_acc=max(accretion_mm_yr)) %>% 
+  ungroup() %>% 
+  pivot_wider(names_from = rsr,values_from = peak_acc,names_prefix = "RSR_") %>% 
+  filter(sed_conc==.005) %>% ## change here for other sec conc
+  mutate(threshold_change_double=RSR_4-RSR_2) %>% 
+  mutate(threshold_change_half=RSR_1-RSR_2) %>% 
+  glimpse()
 ```
 
 
-```{r fig-4-total-c-per-scenario-run-LOAD-DATA}
-dir_name_fig_4_results <- "scenario_runs_fig_4"
+```{r inspect-peak-thresholds-peak-accretion}
+get_slr_tibble %>%
+  filter(Yr<cut_year) %>%
+  group_by(rsr,sed_conc) %>%
+  summarise(peak_acc=max(accretion_mm_yr)) %>% 
+  ungroup()  
+```
+
+
+```{r fig-5-bottom-panel-total-c-per-scenario-run-LOAD-DATA}
+# dir_name_fig_4_results <- "scenario_runs_fig_4_FIXED_PRODUCTIVITY"
+# dir_name_fig_4_results <- "scenario_runs_fig_4_FIXED_PRODUCTIVITY_NO_LITTER_low_svel"
+dir_name_fig_4_results <- 
+  #"scenario_runs_fig_4_FIXED_PRODUCTIVITY_NO_LITTER_low_svel_300_years" # A2 values
+  "scenario_runs_fig_4_FIXED_PRODUCTIVITY_NO_LITTER_low_svel_SWEET_INTERM_HIGH"
+# dir_name_fig_4_results <- "scenario_runs_fig_4"
 run_dir_full_name<- paste0("../source_cpp_model/model_output/", dir_name_fig_4_results,"/")
                        
 series_column_names_NO_ACRETION <-c("Yr", "MHT", "Elevation", "Biomass", 
@@ -549,9 +851,14 @@ series_column_names_NO_ACRETION <-c("Yr", "MHT", "Elevation", "Biomass",
     start_carbon <- cur_data %>% 
       filter(Yr==100) %>% 
       pull(total_carbon)
+    
+    survival_years <- cur_data %>% 
+      filter(Biomass==0) %>% 
+      slice_min(Yr) %>% 
+      pull(Yr)
    
     carbon_accumulation <- end_carbon - start_carbon 
-    cur_row <- tibble(carbon_accumulation,sed_conc,RSR)
+    cur_row <- tibble(carbon_accumulation,sed_conc,RSR,survival_years)
     fig_4_scenario_runs <- bind_rows(fig_4_scenario_runs,cur_row) 
   }
   
@@ -559,64 +866,97 @@ series_column_names_NO_ACRETION <-c("Yr", "MHT", "Elevation", "Biomass",
 
 ```
 
-```{r fig-4-total-c-per-scenario-run-MAKE-PLOT}
+
+```{r fig-5-bottom-pane-total-c-per-scenario-run-MAKE-PLOT-SIMPLE}
 leaf_color <- "green"
 root_color <- "brown"
-theme_set(theme_paper_ready(axis_size_adjust = 0))
-# theme_set(theme_classic(base_size = 12))
 fig_4_scenario_runs_baseline <- fig_4_scenario_runs %>%
 # fig_4_scenario_runs %>% 
   filter(RSR ==2) %>% 
   glimpse()
 
+
+plot_sed_vec <- c(0,.005,seq(from=.01,to=.05, by=.01))
+
 fig_4_diff_data <- fig_4_scenario_runs %>%
+  # filter(sed_conc %in% plot_sed_vec) %>% 
   filter(RSR %in% c(1,2,4)) %>% 
   mutate(RSR=paste0("RSR_",RSR)) %>%
+  select(-survival_years) %>% 
+  pivot_wider(names_from = RSR, values_from = carbon_accumulation) %>% 
+  mutate(pct_C_change_increase=(RSR_4-RSR_2)/RSR_2) %>% 
+  mutate(pct_c_change_decrease=(RSR_1-RSR_2)/RSR_2)
+
+
+
+
+C_accumulation_totals_fig <- fig_4_scenario_runs %>% 
+      filter(sed_conc %in% plot_sed_vec) %>% 
+  mutate(sed_conc_mg=sed_conc*1000) %>% 
+    ggplot(aes(x=RSR,y=carbon_accumulation*.44,group=sed_conc_mg,color=as.factor(sed_conc_mg)))+
+    geom_point() +
+    geom_line() +
+  scale_color_viridis_d( "SSC (mg/L)") +
+  ylab(expression("Total C accumulation (kg m"^-2*")"))  
+  # scale_x_log10() +
+  # scale_y_log10()
+  
+  # geom_vline(xintercept = 1,color=leaf_color,linetype="dotted",size=2) +
+  # geom_vline(xintercept = 2) +
+  # geom_vline(xintercept = 4,color=root_color,linetype="dotted",size=2) 
+
+C_accumulation_totals_fig 
+
+```
+
+
+```{r fig-S2}
+fig_4_diff_data <- fig_4_scenario_runs %>%
+  # filter(sed_conc %in% plot_sed_vec) %>% 
+  filter(RSR %in% c(1,2,4)) %>% 
+  mutate(RSR=paste0("RSR_",RSR)) %>%
+  select(-survival_years) %>% 
   pivot_wider(names_from = RSR, values_from = carbon_accumulation) %>% 
   mutate(pct_C_change_increase=(RSR_4-RSR_2)/RSR_2) %>% 
   mutate(pct_c_change_decrease=(RSR_1-RSR_2)/RSR_2)
 
 left_panel_pct_difs <- fig_4_diff_data %>% 
+    filter(sed_conc %in% plot_sed_vec) %>% 
+
   pivot_longer(starts_with("pct_C_")) %>% 
   ggplot(aes(x=sed_conc*1000,y=value*100,color=name)) +
   geom_point() +
   geom_line() +
   geom_hline(yintercept = 0) +
-  ylab("% change in organic matter accumulation") +
-  xlab("sediment concentration (mg/L)") +
-  scale_color_manual(values=c(root_color,leaf_color)) +
+  ylab("% change in total C accumulation") +
+  xlab("SSC (mg/L)") +
+  scale_color_manual(values=c(leaf_color,root_color)) + #leaf is 1, root is 4
   theme(legend.position="none")
-  
 
+left_panel_pct_difs
 
-
-right_panel_absolute_numbers <- fig_4_scenario_runs %>% 
-  mutate(sed_conc_mg=sed_conc*1000) %>% 
-    ggplot(aes(x=RSR,y=carbon_accumulation,group=sed_conc_mg,color=as.factor(sed_conc_mg)))+
-    geom_point() +
-    geom_line() +
-  scale_color_viridis_d( "sediment concentration (mg/L)") +
-  ylab("total organic matter accumulation (g)") +
-  xlab("root:shoot ratio")  +
-  geom_vline(xintercept = 1,color=leaf_color,linetype="dotted",size=2) +
-  geom_vline(xintercept = 2) +
-  geom_vline(xintercept = 4,color=root_color,linetype="dotted",size=2) 
-
-left_panel_pct_difs | right_panel_absolute_numbers
 ```
 
-```{r fig-5-LOAD-DATA}
+```{r compute-fig-4-numbers}
+fig_4_diff_data %>% 
+ mutate(C_change_increase_abs=RSR_4-RSR_2)  %>% 
+ mutate(C_change_decrease_abs=RSR_1-RSR_2)  %>% 
+  filter(sed_conc %in% c(.005,.05))
+  
+```
 
-dir_name_fig_4_results <- "scenario_runs_fig_4"
+
+
+
+```{r  fig-5-load-data-make-plot}
+dir_name_fig_4_results <-
+  "scenario_runs_fig_4_FIXED_PRODUCTIVITY_NO_LITTER_low_svel_SWEET_INTERM_HIGH" ## A2 answer
 run_dir_full_name<- paste0("../source_cpp_model/model_output/", dir_name_fig_4_results,"/")
                        
 series_column_names_NO_ACRETION <-c("Yr", "MHT", "Elevation", "Biomass", 
                           "Silt", "Ref", "Lab","extra_column")
   
 
-  # run_string_vec <- c("00","01","10","11")
-  # run_string_vec <- c( "0.000", "0.001", "0.005", "0.050")
- 
    sed_pattern <- "sed_([0-9.]+)\\.txt" # regex for extracting SLR rate
    rsr_pattern <- "D_mbm_([0-9.]+)\\_" # regex for extracting SLR rate
  
@@ -626,8 +966,6 @@ series_column_names_NO_ACRETION <-c("Yr", "MHT", "Elevation", "Biomass",
    
   fig_5_tibble <- tibble()
   for(cur_file_name in list.files(run_dir_full_name)){
-    # cur_file_name <- equilibrium_run_files[4] #run name
-    # slr_rate <- str_extract(cur_file_name, pattern) %>%  
     sed_conc <- str_extract(cur_file_name, sed_pattern) %>%  
       str_extract("[0-9.]+")  %>% 
       substr(1, nchar(.) - 1) %>%  
@@ -649,8 +987,6 @@ series_column_names_NO_ACRETION <-c("Yr", "MHT", "Elevation", "Biomass",
         col_names = series_column_names_NO_ACRETION,
         trim_ws = TRUE) %>% 
         select(-extra_column) %>% 
-        # mutate(Yr=Yr+2010) %>%
-          # filter(Yr>1980) %>%
         mutate(sed_conc=sed_conc) %>% 
         mutate(RSR=RSR)
       
@@ -658,7 +994,7 @@ series_column_names_NO_ACRETION <-c("Yr", "MHT", "Elevation", "Biomass",
       cur_data <- cur_data %>% 
         mutate(sed_conc_mg_l=sed_conc*1000) %>% 
         mutate(total_carbon=Lab+Ref) %>% 
-        mutate(CAR_g_yr=total_carbon - lag(total_carbon)) %>% 
+        mutate(CAR_kg_yr=total_carbon - lag(total_carbon)) %>% 
         mutate(accretion_mm_yr=Elevation-lag(Elevation)) %>% 
         mutate(accretion_mm_yr=accretion_mm_yr*1000) 
       
@@ -666,31 +1002,137 @@ series_column_names_NO_ACRETION <-c("Yr", "MHT", "Elevation", "Biomass",
     }
   }
   
-  glimpse(fig_5_tibble)
 
-```
 
-```{r  fig-5-MAKE-FIGURE}
-theme_set(theme_paper_ready(axis_size_adjust = -3))
 
-top_row_OM_acum <- fig_5_tibble %>% 
+
+FIG_5_CUT_YEAR <- 300
+fig_5_panel_accretion <- function(input_data,sed_conc_mg_L_arg,cut_year=FIG_5_CUT_YEAR,ylim_arg=NULL){
+ input_data %>% 
   mutate(RSR=as.factor(RSR)) %>% 
   filter(Yr>80) %>% 
-  ggplot(aes(x=Yr,y=CAR_g_yr,color=RSR,group=RSR)) + 
-  geom_line() +
-  facet_wrap(~sed_conc_mg_l,scales="free_y") +
-  ylab("organic matter accumulation (g m^-1 yr^-1)")
-
-bottom_row_accretion <- fig_5_tibble %>% 
-  mutate(RSR=as.factor(RSR)) %>% 
-  filter(Yr>80) %>% 
+    filter(Yr<cut_year) %>% 
+    mutate(Yr=Yr+1900) %>% 
+  filter(sed_conc_mg_l==sed_conc_mg_L_arg) %>% 
   ggplot(aes(x=Yr,y=accretion_mm_yr,color=RSR,group=RSR)) + 
   geom_line() +
-  # facet_wrap(~sed_conc,scales="free_y") + 
-  facet_wrap(~sed_conc_mg_l) + 
-  ylab("Accretion rate (mm yr^-1)")
+  ggtitle(bquote("SSC:" ~ .(sed_conc_mg_L_arg ) ~ "mg L"^-1)) +
+  ylab(expression("Accretion rate (mm yr"^-1*")")) +
+    scale_color_manual(
+      values= c("darkgreen","black","brown"),
+      labels = c("1" = "halving (RSR=1)","2"="baseline (RSR=2)", "4" = "doubling (RSR=4)"),
+      "root:shoot ratio") +
+    ylim(ylim_arg)
 
-top_row_OM_acum / bottom_row_accretion + plot_layout(guides = 'collect')
+ 
+}
+
+fig_5_panel_organic_matter <-
+  function(input_data,sed_conc_mg_L_arg,cut_year=FIG_5_CUT_YEAR,ylim_arg=NULL){
+ input_data %>% 
+  mutate(RSR=as.factor(RSR)) %>% 
+  filter(Yr>80) %>% 
+    filter(Yr<cut_year) %>%
+  mutate(Yr=Yr+1900) %>% 
+  filter(sed_conc_mg_l==sed_conc_mg_L_arg) %>% 
+  ggplot(aes(x=Yr,y=CAR_kg_yr*1000*.44,color=RSR,group=RSR)) + 
+  geom_line() +
+  ylab(expression("C accumulation (g m"^-2*yr^-1*")")) +
+    scale_color_manual(
+      values= c("darkgreen","black","brown"),
+      labels = c("1" = "halving (RSR=1)","2"="baseline (RSR=2)", "4" = "doubling (RSR=4)"),
+      "root:shoot ratio") +
+      ylim(ylim_arg)
+
+ 
+}
+
+
+ylim_accretion<-  c(-2.2,16)
+ylim_OM <- c(-.894*1000,2.36*1000)
+ylim_C <- c(-.894*1000*.44,.44*2.36*1000)
+ 
+
+ 
+(fig_5_panel_accretion(fig_5_tibble,SED_CONC_LOW*1000, ylim_arg=ylim_accretion)  |
+   fig_5_panel_accretion(fig_5_tibble,SED_CONC_HIGH*1000,ylim_arg=ylim_accretion)) /
+  (fig_5_panel_organic_matter(fig_5_tibble,SED_CONC_LOW*1000,ylim_arg=ylim_C) |
+    fig_5_panel_organic_matter(fig_5_tibble,SED_CONC_HIGH*1000,ylim_arg=ylim_C) )+
+  plot_layout(guides = 'collect') 
 
 ```
+
+
+```{r compute-drowning-year}
+fig_5_tibble %>% 
+  group_by(sed_conc, RSR) %>%
+  filter(Biomass == 0) %>%
+  slice_min(Yr) %>%
+  ungroup() %>% 
+  mutate(Yr=1900+Yr) %>% 
+  select(Yr,sed_conc,RSR)
+
+```
+
+
+```{r compute-peak-CAR}
+fig_5_tibble %>% 
+  group_by(sed_conc, RSR) %>%
+  slice_max(CAR_kg_yr) %>%
+  ungroup() %>% 
+  select(sed_conc,RSR,CAR_kg_yr,Yr)
+
+fig_5_tibble %>% 
+  group_by(sed_conc, RSR) %>%
+  slice_max(CAR_kg_yr) %>%
+  ungroup() %>% 
+  select(sed_conc,RSR,CAR_kg_yr) %>% 
+  mutate(RSR=paste0("RSR_",RSR)) %>% 
+  pivot_wider(names_from = RSR, values_from = CAR_kg_yr) %>% 
+    mutate(pct_C_change_increase=(RSR_4-RSR_2)/RSR_2*100) %>% 
+  mutate(pct_c_change_decrease=(RSR_1-RSR_2)/RSR_2*100 )
+
+
+```
+
+```{r compare-to-A2-to-NOAA}
+#exploration of NOAA projection vs. A2 projection
+sl_smooth_extended <-
+  read_csv("../source_cpp_model/A2smoothsl_extended.txt",
+           col_names = "SL") %>% 
+  mutate(year=row_number())
+
+SLR_sweet <- read_csv("../data/SLR_mb_sweet_ROW_FORM.csv") %>% 
+  select(year,int_high) %>% 
+  rename(SLR=int_high) %>% 
+  mutate(SL=cumsum(SLR))
+
+sl_smooth_extended %>% 
+  mutate(SLR=SL - lag(SL)) %>% 
+  mutate(year=year + 2000) %>% 
+  ggplot(aes(x=year,y=SL)) +
+  geom_line(color="orange") +
+  # geom_line(data=final_data,color="black",aes(x=year,y=sea_level)) +
+  geom_line(data=SLR_sweet,aes(x=year+2000,y=SL),color="blue") +
+  ggtitle("red is SSP.3-7, orange is A2, green is sweet") +
+  ylab("mean sea level (M)")
+
+```
+
+```{r calculte slr_rate}
+
+min_SLR <- SLR_sweet %>% 
+  pull(SLR) %>% 
+  min()
+
+max_SLR <- SLR_sweet %>% 
+  pull(SLR) %>% 
+  max()
+
+1000* (max_SLR - min_SLR)/
+  151
+
+
+```
+
 

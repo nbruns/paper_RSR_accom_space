@@ -157,7 +157,7 @@ int main()
 
 	// these are the parameters for north inlet
 	root_efold = 0.11;
-	// effective_svel = 0.000037;			// UPDATE 9-sept-2011: tke model calcualtes effective settling directly
+	effective_svel = .0001;//0.000037;			// UPDATE 9-sept-2011: tke model calcualtes effective settling directly
 	labile_frac = 0.842;
 	silt_frac = 1.0;
 	conc_silt = tot_conc*silt_frac;
@@ -182,7 +182,7 @@ int main()
 
 
 		//SLR = double(i)*0.001;
-		SLR = .08;  // 5 mm/yr
+		SLR = .02;  // 5 mm/yr
 
 		cout << endl << " fname: " << fname << endl
 			 << "theta_gamma_roots: " << root_efold << endl
@@ -493,7 +493,7 @@ double column_model(double RSLR, double kfactor, double bfactor, double tA, doub
 
 
 	// SMM 9-sept: calcualte the particle settling velocities explicitly
-	effective_svel = calculate_w_s(particle_diameters[0]);
+	// effective_svel = calculate_w_s(particle_diameters[0]); ##NEB comments out, Jul-5
 
 
 	// reset the sea level rise and concnetrations for this run

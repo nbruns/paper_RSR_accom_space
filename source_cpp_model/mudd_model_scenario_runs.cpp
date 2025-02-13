@@ -197,8 +197,8 @@ int main()
 	 // Figure special additional values 
 	// const int a_count = 3;
 	// double rsr_value_array[a_count] = {1, 2, 4};
-	// const int s_count = 3;
-	// double sed_conc_array[s_count] = {0.005, 0.03,.05};
+	// const int s_count = 2;
+	// double sed_conc_array[s_count] = {0.005, .05};
 	
 	// double sed_conc_array[s_count] = {0.02, 0.04};
     
@@ -293,7 +293,10 @@ double column_model(double RSLR, double kfactor, double bfactor, double tA, doub
 	///////MK- I added this section to load SL. Put all SL calculations in column_model function /////////////
 	ifstream myfile2;
 	// myfile2.open("A2smoothsl.txt", ios::in);
-	myfile2.open("A2smoothsl_extended.txt", ios::in);
+	// myfile2.open("A2smoothsl_extended.txt", ios::in); 
+	// myfile2.open("ssp370_smooth.txt", ios::in); // NEB-- October 13, 2024, now using new data from SSP.3-7.0
+	// myfile2.open("SL_sweet_interm_300_years.txt", ios::in); // NEB-- October 21, 2024, now using new data from SSP.3-7.0
+	myfile2.open("SL_sweet_interm_high_300_years.txt", ios::in); // NEB-- October 21, 2024, now using new data from SSP.3-7.0
 	vector<double> slvector;
 	double sealevel;
 	while (!myfile2.eof())	// This makes a vector that contains one extra entry at end
@@ -368,6 +371,7 @@ double column_model(double RSLR, double kfactor, double bfactor, double tA, doub
 											// layer of an annual band
 	int ab_pointer_sz;
 
+	// int end_year = 250;				// the final year	
 	int end_year = 300;				// the final year	
 	// int end_year = 200;				// the final year	
 							// if you change this, check line 631
@@ -655,6 +659,7 @@ double column_model(double RSLR, double kfactor, double bfactor, double tA, doub
 	int dead_biomass_counter = 0;
 	int low_acc_ratio_counter = 0;
 	int yr = 0;
+	// int runup=end_year-150; //NEB-- must bring this in if you want a longer run, check line 372 (making simulation 250 years)
 	int runup=end_year-200; //NEB-- must bring this in if you want a longer run
 	// int runup=end_year-100; //NEB-- must comment this ou if you want a longer run
 	//while(yr < end_year && dead_biomass_counter < 10 && (accretion_ratio < .99 || accretion_ratio > 1.01 ))
@@ -985,7 +990,7 @@ double column_model(double RSLR, double kfactor, double bfactor, double tA, doub
    	// MK- New function to save time series data
 	ofstream series_out;
 	//all below is NEB hack for clean runs
-	string run_name ="scenario_runs_fig_4_FIXED_PRODUCTIVITY_NO_LITTER_low_svel_300_years"; // This probably aught to be a parm passed in at runtime
+	string run_name ="scenario_runs_fig_4_FIXED_PRODUCTIVITY_NO_LITTER_low_svel_SWEET_INTERM_HIGH"; // This probably aught to be a parm passed in at runtime
 	string output_dir="model_output/" + run_name + "/";
 	string fname2_prefix= output_dir + "series."; //NEB hack 
 	// string fname2_prefix="series."; //NEB hack 
